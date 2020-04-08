@@ -1,4 +1,4 @@
-#include "../lib/graph_app.h"
+#include "../graphics_x11/graph_app.h"
 
 struct graph_app {
  int a;
