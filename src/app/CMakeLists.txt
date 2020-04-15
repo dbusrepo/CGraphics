@@ -1,4 +1,6 @@
-add_library(app "")
+#PRINT_CUR_BINARY_DIR()
+
+add_library(app OBJECT "") # object library, see $<TARGET_OBJECTS:objLib>
 
 target_sources(app
         PRIVATE

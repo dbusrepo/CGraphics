@@ -76,6 +76,7 @@ dkms.conf
 
 # CMake
 cmake-build-*/
+build/
 
 # Idea project files
 out/
