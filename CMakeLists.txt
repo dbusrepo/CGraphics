@@ -17,6 +17,8 @@ set(MY_RELEASE_OPTIONS)
 
 #-pedantic-errors
 
+message("using cmake ${CMAKE_VERSION}")
+
 #https://stackoverflow.com/questions/10046114/in-cmake-how-can-i-test-if-the-compiler-is-clang
 if(CMAKE_C_COMPILER_ID MATCHES GNU)
     # using GCC
@@ -25,6 +27,15 @@ if(CMAKE_C_COMPILER_ID MATCHES GNU)
     list(APPEND MY_DEBUG_OPTIONS "-Og")
     list(APPEND MY_RELEASE_OPTIONS "-O3")
 endif()
+
+if(CMAKE_C_COMPILER_ID MATCHES Intel)
+    # using GCC
+    message("using icc " ${CMAKE_C_COMPILER_VERSION})
+    #list(APPEND MY_OPTIONS ${gcc_options}) #${gcc_options}
+    #list(APPEND MY_DEBUG_OPTIONS "-Og")
+    #list(APPEND MY_RELEASE_OPTIONS "-O3")
+endif()
+
 
 #https://stackoverflow.com/questions/31790467/how-to-enable-all-compiler-warnings-in-clion
 #set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
