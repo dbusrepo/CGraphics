@@ -30,10 +30,10 @@ static void blit(screen_x11_t *screen_x11);
 
 static void init_screen_settings(const screen_x11_t *screen_x11);
 
-screen_x11_t *init_screen_x11(char *window_title, int xsize, int ysize) {
+screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
     screen_x11_t *screen_x11 = malloc(sizeof(screen_x11_t));
-    screen_x11->xsize = xsize;
-    screen_x11->ysize = ysize;
+    screen_x11->xsize = screen_settings->xsize;
+    screen_x11->ysize = screen_settings->ysize;
     if (!(screen_x11->dpy = XOpenDisplay(NULL))) {
         printf("Couldn't open a display connection\n");
         exit(EXIT_FAILURE);
@@ -60,14 +60,15 @@ screen_x11_t *init_screen_x11(char *window_title, int xsize, int ysize) {
     screen_x11->w = XCreateWindow(screen_x11->dpy,                // display
                           DefaultRootWindow(screen_x11->dpy),     // parent
                           100, 100,                   // x, y position
-                          (unsigned int)xsize, (unsigned int)ysize, // width, height
+                          (unsigned int)screen_settings->xsize, // width
+                          (unsigned int)screen_settings->ysize, // height
                           0,                          // border width
                           screen_x11->depth,          // defaultDepth (we use max. possible)
                           CopyFromParent,             // visual class (TrueColor etc)
                           screen_x11->vis,            // visual
                           0, NULL);                   // valuemask, window attributes
 
-    XStoreName(screen_x11->dpy, screen_x11->w, window_title);
+    XStoreName(screen_x11->dpy, screen_x11->w, screen_settings->window_title);
     XMapWindow(screen_x11->dpy, screen_x11->w);
 
     switch(screen_x11->vis->class) {
