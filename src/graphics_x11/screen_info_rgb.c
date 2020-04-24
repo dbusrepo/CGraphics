@@ -16,7 +16,7 @@ static void compute_color_shift_and_max_value(int mask, int *p_shift, int *p_max
 
 screen_info_rgb_t *init_screen_info_rgb(
         unsigned long red_mask, unsigned long green_mask, unsigned long blue_mask,
-        char bytes_per_pixel, char bytes_per_rgb,
+        int bytes_per_pixel, int bytes_per_rgb,
         unsigned char *p_screenbuf) {
     screen_info_rgb_t *screen_info_rgb = malloc(sizeof(screen_info_rgb_t));
 
