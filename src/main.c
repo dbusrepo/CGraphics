@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
     screen_settings->xsize = 800;
     screen_settings->ysize = 600;
     screen_settings->targetFps = 60;
+    screen_settings->show_rendering_info = true;
     screen_x11_t *screen_x11 = init_screen_x11(screen_settings);
     run_event_loop(screen_x11, logic, frame, key_event);
     return 0;

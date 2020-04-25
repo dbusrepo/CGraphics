@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 
 typedef struct screen_x11 screen_x11_t;
 
@@ -7,6 +8,7 @@ typedef struct {
     int xsize;
     int ysize;
     int targetFps;
+    bool show_rendering_info;
 } screen_settings_t;
 
 screen_x11_t *init_screen_x11(screen_settings_t *screen_settings);
