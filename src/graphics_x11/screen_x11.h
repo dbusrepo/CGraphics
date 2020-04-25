@@ -10,8 +10,13 @@ typedef struct {
 } screen_settings_t;
 
 screen_x11_t *init_screen_x11(screen_settings_t *screen_settings);
+
+typedef void (*update_fptr_t)(void);
+typedef void (*render_fptr_t)(void);
+typedef void (*key_event_fptr_t)(int key_code);
+
 void run_event_loop(screen_x11_t *screen_x11,
-                    void (*logic)(void),
-                    void (*frame)(void),
-                    void (*key_event)(int key_code));
+                    update_fptr_t update_fptr,
+                    render_fptr_t render_fptr,
+                    key_event_fptr_t key_event_fptr);
 

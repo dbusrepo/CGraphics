@@ -7,4 +7,4 @@ struct graph_app {
 //void init_screen_settings(graph_app_t *graph_app, screen_settings_t *screen_settings) {}
 //void draw_event(graph_app_t *graph_app) {}
 //void update_event(graph_app_t *graph_app) {}
-//void key_event(graph_app_t *graph_app, int ch) {}
+//void key_event_fptr(graph_app_t *graph_app, int ch) {}
