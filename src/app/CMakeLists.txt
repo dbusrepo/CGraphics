@@ -9,6 +9,7 @@ target_sources(app
         #    ${CMAKE_CURRENT_LIST_DIR}/../screen_x11/graph_app.h
         )
 
+# TODO
 target_link_libraries(app
         PRIVATE
             screen_x11

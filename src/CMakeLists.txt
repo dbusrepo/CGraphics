@@ -3,14 +3,14 @@
 add_subdirectory(screen_x11)
 add_subdirectory(app)
 
-add_executable(XlibGraphics)
+add_executable(LinuxGraphics)
 
-target_sources(XlibGraphics
+target_sources(LinuxGraphics
         PRIVATE
             ${CMAKE_CURRENT_LIST_DIR}/main.c
         )
 
-target_link_libraries(XlibGraphics
+target_link_libraries(LinuxGraphics
         PRIVATE
             screen_x11
             app

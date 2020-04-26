@@ -51,9 +51,10 @@ struct screen_x11 {
     int buf_size;                      // screen_buffer size
     uint8_t *buffer;                    // offscreen screen_buffer data for ximage
     GC gc;                            // X11: graphics context
-    XFontStruct* font_info;
+//    XFontStruct* font_info;
     XShmSegmentInfo shminfo;          // X11 shm
     XImage *ximg;                   // X11: XImage which will be actually shown
+
     screen_info_rgb_t *screen_info_rgb;
     int64_t period; // period between drawing // all times are in _nanosecs_
     int64_t start_time;
@@ -153,16 +154,17 @@ screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
 
     XSelectInput(screen_x11->display, screen_x11->window, KeyPressMask);
 
-    screen_x11->gc = XCreateGC(screen_x11->display, screen_x11->window, 0, NULL);
+    screen_x11->gc = XCreateGC(screen_x11->display, screen_x11->window, 0, NULL); // DefaultGC(screen_x11->dpy, screen_num);
     /* change the foreground color of this GC to white. */
     XSetForeground(screen_x11->display, screen_x11->gc, WhitePixel(screen_x11->display, screen_num));
+
     // init font for drawing stats. REMOVE?
-    screen_x11->font_info = XLoadQueryFont(screen_x11->display, FONT_NAME);
-    if (!screen_x11->font_info) {
-        fprintf(stderr, "XLoadQueryFont: failed loading font '%s'\n", FONT_NAME);
-        exit(EXIT_FAILURE);
-    }
-    XSetFont(screen_x11->display, screen_x11->gc, screen_x11->font_info->fid);
+//    screen_x11->font_info = XLoadQueryFont(screen_x11->display, FONT_NAME);
+//    if (!screen_x11->font_info) {
+//        fprintf(stderr, "XLoadQueryFont: failed loading font '%s'\n", FONT_NAME);
+//        exit(EXIT_FAILURE);
+//    }
+//    XSetFont(screen_x11->display, screen_x11->gc, screen_x11->font_info->fid);
 
     screen_x11->buf_size = screen_x11->xsize * screen_x11->ysize * screen_x11->bytespp; // used for clearing screen_num buf
     screen_x11->ximg = create_image(screen_x11);
@@ -253,7 +255,7 @@ void run_event_loop(screen_x11_t *screen_x11,
     shmdt(screen_x11->shminfo.shmaddr);
 
     XUnmapWindow(screen_x11->display, screen_x11->window);
-//    XFreeGC(screen_x11->display, screen_x11->gc); // error if using the default one? // TODO
+    XFreeGC(screen_x11->display, screen_x11->gc); // error if using the default one?
     XDestroyWindow(screen_x11->display, screen_x11->window);
     //delete [] screen_buffer; // automatically done by XDestroyImage ! See man page...
     XCloseDisplay(screen_x11->display);
@@ -289,7 +291,7 @@ void print_rendering_info(screen_x11_t *screen_x11) {
 }
 
 void clear_screen(const screen_x11_t *screen_x11) {
-    memset(screen_x11->buffer, 255, (size_t)screen_x11->xsize * screen_x11->ysize * screen_x11->screen_info_rgb->bytes_per_pixel);
+    memset(screen_x11->buffer, 0x00, (size_t)screen_x11->xsize * screen_x11->ysize * screen_x11->screen_info_rgb->bytes_per_pixel);
 }
 
 void update(screen_x11_t *screen_x11, int64_t elapsed_time) {
