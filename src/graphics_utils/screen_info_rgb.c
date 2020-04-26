@@ -3,6 +3,7 @@
 #include <zconf.h>
 #include "common.h"
 #include "screen_info_rgb.h"
+#include "screen_info_rgb_p.h"
 
 static void compute_color_resolution(screen_info_rgb_t *screen_info);
 static void compute_color_shift_and_max_value(uint32_t mask, uint32_t *p_shift, uint32_t *p_max);
@@ -11,6 +12,7 @@ screen_info_rgb_t *init_screen_info_rgb(
         uint32_t red_mask, uint32_t green_mask, uint32_t blue_mask,
         uint32_t bytes_per_pixel, uint32_t bytes_per_rgb,
         uint8_t *buffer) {
+
     screen_info_rgb_t *screen_info = malloc(sizeof(screen_info_rgb_t));
 
     screen_info->red_mask = red_mask;
@@ -33,7 +35,7 @@ screen_info_rgb_t *init_screen_info_rgb(
 }
 
 uint32_t ext_to_native(screen_info_rgb_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
-    unsigned long red_rescaled, green_rescaled, blue_rescaled;
+    uint32_t red_rescaled, green_rescaled, blue_rescaled;
 
     red_rescaled = red * screen_info->red_max / screen_info->ext_max_red;
     green_rescaled = green * screen_info->green_max / screen_info->ext_max_green;

@@ -4,12 +4,12 @@
 //#include <X11/Xutil.h>
 
 //#include "graphics_utils/screen_info_rgb.h"
-#include "screen_x11/screen_x11.h"
+#include "app/app.h"
 
-void logic(void) {
+void update(int64_t elapsed_time) {
 }
 
-void frame(void) {
+void render(void) {
 }
 
 void key_event(int key_code) {
@@ -22,8 +22,7 @@ int main(int argc, char *argv[]) {
     screen_settings->ysize = 600;
     screen_settings->targetFps = 60;
     screen_settings->show_rendering_info = true;
-    screen_x11_t *screen_x11 = init_screen_x11(screen_settings);
-    screen_info_rgb_t *screen_info_rgb = get_screen_info(screen_x11);
-    run_event_loop(screen_x11, logic, frame, key_event);
+    app_t *app = init_app(screen_settings);
+    run_event_loop(app, update, render, key_event);
     return 0;
 }

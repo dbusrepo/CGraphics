@@ -1,29 +1,37 @@
 #PRINT_CUR_BINARY_DIR()
 
-add_library(screen_x11 STATIC "" ../graphics_utils/screen_info_rgb.h ../graphics_utils/screen_info_rgb.c ../graphics_utils/font.h ../graphics_utils/font.c ../graphics_utils/common.h screen_info_rgb_p.h)
+add_library(screen_x11 OBJECT "")
 
 target_sources(screen_x11
         PRIVATE
-            screen_x11.c
+        screen.c
+        ../graphics_utils/common.h
+        ../graphics_utils/screen_info_rgb.h
+        ../graphics_utils/screen_info_rgb_p.h
+        ../graphics_utils/screen_settings.h
+        ../app/screen.h
         PUBLIC
-            ${CMAKE_CURRENT_LIST_DIR}/screen_x11.h
+        ../app/screen.h
+        ../graphics_utils/screen_info_rgb.h
+        ../graphics_utils/screen_settings.h
         )
 
 target_compile_options(screen_x11
         PRIVATE
-            "${MY_OPTIONS}"
-            "$<$<CONFIG:Debug>:${MY_DEBUG_OPTIONS}>"
-            "$<$<CONFIG:Release>:${MY_RELEASE_OPTIONS}>"
+        "${MY_OPTIONS}"
+        "$<$<CONFIG:Debug>:${MY_DEBUG_OPTIONS}>"
+        "$<$<CONFIG:Release>:${MY_RELEASE_OPTIONS}>"
         )
 
 target_include_directories(screen_x11
         PUBLIC
-            ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}
         )
 
 target_link_libraries(screen_x11
         PRIVATE
-            X11
-            Xext
-            Xt
+        X11
+        Xext
+        Xt
+#        graphics_utils
         )
