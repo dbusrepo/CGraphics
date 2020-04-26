@@ -32,6 +32,7 @@ struct screen {
     XShmSegmentInfo shminfo;          // X11 shm
     XImage *ximg;                   // X11: XImage which will be actually shown
     screen_info_rgb_t *screen_info_rgb;
+    int64_t input_mask;
 };
 
 static XImage *create_image(screen_x11_t *screen_x11);
@@ -111,7 +112,8 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             exit(EXIT_FAILURE);
     }
 
-    XSelectInput(screen_x11->display, screen_x11->window, KeyPressMask | ResizeRedirectMask);
+    screen_x11->input_mask = KeyPressMask | KeyReleaseMask;
+    XSelectInput(screen_x11->display, screen_x11->window, screen_x11->input_mask);
 
     screen_x11->gc = XCreateGC(screen_x11->display, screen_x11->window, 0, NULL); // DefaultGC(screen_x11->dpy, screen_num);
     /* change the foreground color of this GC to white. */
@@ -181,10 +183,28 @@ void check_event(screen_x11_t *screen, app_t *app, app_key_event_fptr_t app_key_
     KeySym keysym;
     XComposeStatus xcompstat;
 
-    if(XCheckWindowEvent(screen->display, screen->window, KeyPressMask, &event)) {
-        XLookupString(&event.xkey, &ch, 1, &keysym, &xcompstat);
-        app_key_event_fptr(app, ch);
+    // if or while?
+    if (XCheckWindowEvent(screen->display, screen->window, screen->input_mask, &event))
+    {
+        switch (event.type)
+        {
+            case KeyPress:
+//                printf("pressed\n");
+                XLookupString(&event.xkey, &ch, 1, &keysym, &xcompstat);
+                app_key_event_fptr(app, ch);
+                break;
+            case KeyRelease:
+//                printf("released\n");
+                break;
+            default:
+                break;
+        }
     }
+
+//    if(XCheckWindowEvent(screen->display, screen->window, KeyPressMask, &event)) {
+//        XLookupString(&event.xkey, &ch, 1, &keysym, &xcompstat);
+//        app_key_event_fptr(app, ch);
+//    }
 }
 
 void blit(screen_x11_t *screen) {
