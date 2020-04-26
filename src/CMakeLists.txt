@@ -1,6 +1,6 @@
 #PRINT_CUR_BINARY_DIR()
 
-add_subdirectory(graphics_x11)
+add_subdirectory(screen_x11)
 add_subdirectory(app)
 
 add_executable(XlibGraphics)
@@ -12,6 +12,6 @@ target_sources(XlibGraphics
 
 target_link_libraries(XlibGraphics
         PRIVATE
-            graphics_x11
+            screen_x11
             app
         )

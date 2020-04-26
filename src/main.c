@@ -3,7 +3,8 @@
 //#include <X11/Xlib.h>
 //#include <X11/Xutil.h>
 
-#include "graphics_x11/screen_x11.h"
+//#include "graphics_utils/screen_info_rgb.h"
+#include "screen_x11/screen_x11.h"
 
 void logic(void) {
 }
@@ -22,6 +23,7 @@ int main(int argc, char *argv[]) {
     screen_settings->targetFps = 60;
     screen_settings->show_rendering_info = true;
     screen_x11_t *screen_x11 = init_screen_x11(screen_settings);
+    screen_info_rgb_t *screen_info_rgb = get_screen_info(screen_x11);
     run_event_loop(screen_x11, logic, frame, key_event);
     return 0;
 }

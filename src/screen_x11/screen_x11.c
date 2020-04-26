@@ -8,14 +8,13 @@
 #include <X11/extensions/XShm.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
+#include <tiff.h>
 
+#include "../graphics_utils/common.h"
+#include "../graphics_utils/font.h"
+#include "screen_info_rgb_p.h"
 #include "screen_x11.h"
-#include "screen_info_rgb.h"
 
-#define BITS_PER_BYTE 8
-
-#define NANO_IN_MILLI 1000000
-#define NANO_IN_SEC (1000 * NANO_IN_MILLI)
 
 // number of FPS values stored to get an average
 #define NUM_AVG_FPS 20
@@ -49,8 +48,8 @@ struct screen_x11 {
     Window window;                         // X11: Window
     int depth, bytespp, scanline_pad; // X11: info about X server
     int xsize, ysize;                 // window and screen_buffer size
-    int bufsize;                      // screen_buffer size
-    unsigned char *buffer;            // offscreen screen_buffer data for ximage
+    int buf_size;                      // screen_buffer size
+    uint8_t *buffer;                    // offscreen screen_buffer data for ximage
     GC gc;                            // X11: graphics context
     XFontStruct* font_info;
     XShmSegmentInfo shminfo;          // X11 shm
@@ -69,12 +68,14 @@ struct screen_x11 {
 static void init_stats(screen_x11_t *screen_x11);
 static XImage * create_image(screen_x11_t *screen_x11);
 static void blit(screen_x11_t *screen_x11);
-static inline int64_t nano_time(void);
+static int64_t nano_time(void);
 static void update(screen_x11_t *screen_x11, int64_t elapsed_time);
 static void render(screen_x11_t *screen_x11);
 static void updateStats(screen_x11_t *screen_x11);
-void print_final_stats(screen_x11_t *screen_x11);
-void show_rendering_info(screen_x11_t *screen_x11);
+static void print_final_stats(screen_x11_t *screen_x11);
+static void print_rendering_info(screen_x11_t *screen_x11);
+
+void clear_screen(const screen_x11_t *screen_x11);
 
 screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
     screen_x11_t *screen_x11 = malloc(sizeof(screen_x11_t));
@@ -155,7 +156,7 @@ screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
     screen_x11->gc = XCreateGC(screen_x11->display, screen_x11->window, 0, NULL);
     /* change the foreground color of this GC to white. */
     XSetForeground(screen_x11->display, screen_x11->gc, WhitePixel(screen_x11->display, screen_num));
-    // init font for drawing stats
+    // init font for drawing stats. REMOVE?
     screen_x11->font_info = XLoadQueryFont(screen_x11->display, FONT_NAME);
     if (!screen_x11->font_info) {
         fprintf(stderr, "XLoadQueryFont: failed loading font '%s'\n", FONT_NAME);
@@ -163,7 +164,7 @@ screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
     }
     XSetFont(screen_x11->display, screen_x11->gc, screen_x11->font_info->fid);
 
-    screen_x11->bufsize = screen_x11->xsize * screen_x11->ysize * screen_x11->bytespp; // used for clearing screen_num buf
+    screen_x11->buf_size = screen_x11->xsize * screen_x11->ysize * screen_x11->bytespp; // used for clearing screen_num buf
     screen_x11->ximg = create_image(screen_x11);
 //    screen_x11->buffer = malloc(xsize*ysize*screen_x11->bytespp); // not necessary with the shm
     screen_x11->buffer = (unsigned char *) (screen_x11->ximg->data);
@@ -172,6 +173,8 @@ screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
             screen_x11->vis->red_mask, screen_x11->vis->green_mask, screen_x11->vis->blue_mask,
             screen_x11->bytespp, screen_x11->depth / BITS_PER_BYTE,
             screen_x11->buffer);
+    font_init(screen_x11->screen_info_rgb);
+    set_text_color(screen_x11->screen_info_rgb, 255, 0, 0);
 
     screen_x11->period = NANO_IN_SEC / screen_settings->targetFps;
     screen_x11->start_time = 0;
@@ -184,11 +187,8 @@ screen_x11_t *init_screen_x11(screen_settings_t *screen_settings) {
     return screen_x11;
 }
 
-
-void init_stats(screen_x11_t *screen_x11) {
-    // https://stackoverflow.com/questions/6891720/initialize-reset-struct-to-zero-null
-    static const stats_t empty_stats = { 0 };
-    screen_x11->stats = empty_stats;
+screen_info_rgb_t *get_screen_info(screen_x11_t *screen_x11) {
+    return screen_x11->screen_info_rgb;
 }
 
 void run_event_loop(screen_x11_t *screen_x11,
@@ -260,22 +260,36 @@ void run_event_loop(screen_x11_t *screen_x11,
     exit(EXIT_SUCCESS);
 }
 
+/**********************************************************************/
+// PRIVATE FUNCTIONS
+
+void init_stats(screen_x11_t *screen_x11) {
+    // https://stackoverflow.com/questions/6891720/initialize-reset-struct-to-zero-null
+    static const stats_t empty_stats = { 0 };
+    screen_x11->stats = empty_stats;
+}
+
 void render(screen_x11_t *screen_x11) {
+    clear_screen(screen_x11);
     screen_x11->render_fptr();
+    print_rendering_info(screen_x11);
     blit(screen_x11);
-    show_rendering_info(screen_x11);
     XSync(screen_x11->display, False);
 }
 
-void show_rendering_info(screen_x11_t *screen_x11) {
+void print_rendering_info(screen_x11_t *screen_x11) {
     if (screen_x11->show_rendering_info) {
-        static char buf[255];
-        snprintf(buf, 255, "FPS/UPS: %.0f, %.0f", screen_x11->stats.average_fps, screen_x11->stats.average_ups);
-        XDrawString(screen_x11->display, screen_x11->window, screen_x11->gc,
-                1, // x
-                screen_x11->font_info->ascent + screen_x11->font_info->descent, // y, font_height
-                buf, strlen(buf));
+#define BUFFER_SIZE 256
+        static char buf[BUFFER_SIZE];
+        snprintf(buf, BUFFER_SIZE, "FPS UPS %.0f %.0f", screen_x11->stats.average_fps, screen_x11->stats.average_ups);
+        draw_text(screen_x11->screen_info_rgb,
+                  screen_x11->xsize, screen_x11->ysize,
+                  1, 3, buf);
     }
+}
+
+void clear_screen(const screen_x11_t *screen_x11) {
+    memset(screen_x11->buffer, 255, (size_t)screen_x11->xsize * screen_x11->ysize * screen_x11->screen_info_rgb->bytes_per_pixel);
 }
 
 void update(screen_x11_t *screen_x11, int64_t elapsed_time) {
@@ -352,14 +366,14 @@ void print_final_stats(screen_x11_t *screen_x11) {
 }
 
 // https://stackoverflow.com/questions/31108159/what-is-the-use-of-the-inline-keyword-in-c
-static inline void blit(screen_x11_t *screen_x11) {
+void blit(screen_x11_t *screen_x11) {
     XShmPutImage(screen_x11->display, screen_x11->window, screen_x11->gc, screen_x11->ximg,
                  0, 0, 0, 0,
                  (unsigned int)screen_x11->xsize, (unsigned int)screen_x11->ysize,
                  False);
 }
 
-static XImage * create_image(screen_x11_t *screen_x11) {
+XImage *create_image(screen_x11_t *screen_x11) {
     XImage *ximg = XShmCreateImage(screen_x11->display, screen_x11->vis, (unsigned int) screen_x11->depth,
                                    ZPixmap,   // format
                                    0,  // pixels to ignore at beg. of scanline

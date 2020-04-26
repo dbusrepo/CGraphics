@@ -70,7 +70,6 @@ dkms.conf
 *.sw[nop]
 # Emacs
 # -----
-*~
 \#*\#
 .\#*
 
