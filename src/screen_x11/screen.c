@@ -35,6 +35,7 @@ struct screen {
 };
 
 static XImage *create_image(screen_x11_t *screen_x11);
+static void set_size_hints(const screen_settings_t *screen_settings, const screen_x11_t *screen_x11);
 
 screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     screen_x11_t *screen_x11 = malloc(sizeof(screen_x11_t));
@@ -72,6 +73,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
                                        CopyFromParent,             // visual class (TrueColor etc)
                                        screen_x11->vis,            // visual
                                        0, NULL);                   // valuemask, window attributes
+    set_size_hints(screen_settings, screen_x11);
 
     XStoreName(screen_x11->display, screen_x11->window, screen_settings->window_title);
     XMapWindow(screen_x11->display, screen_x11->window);
@@ -109,7 +111,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             exit(EXIT_FAILURE);
     }
 
-    XSelectInput(screen_x11->display, screen_x11->window, KeyPressMask);
+    XSelectInput(screen_x11->display, screen_x11->window, KeyPressMask | ResizeRedirectMask);
 
     screen_x11->gc = XCreateGC(screen_x11->display, screen_x11->window, 0, NULL); // DefaultGC(screen_x11->dpy, screen_num);
     /* change the foreground color of this GC to white. */
@@ -123,8 +125,10 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 //    }
 //    XSetFont(screen_x11->display, screen_x11->gc, screen_x11->font_info->fid);
 
-    screen_x11->buf_size = screen_x11->xsize * screen_x11->ysize * screen_x11->bytespp; // used for clearing screen_num buf
     screen_x11->ximg = create_image(screen_x11);
+    XFlush(screen_x11->display);
+
+    screen_x11->buf_size = screen_x11->xsize * screen_x11->ysize * screen_x11->bytespp; // used for clearing screen_num buf
 //    screen_x11->buffer = malloc(xsize*ysize*screen_x11->bytespp); // not necessary with the shm
     screen_x11->buffer = (uint8_t *) (screen_x11->ximg->data);
 
@@ -134,6 +138,25 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             screen_x11->buffer);
 
     return screen_x11;
+}
+
+void set_size_hints(const screen_settings_t *screen_settings,
+                    const screen_x11_t *screen_x11) {// see http://ftp.dim13.org/pub/doc/Xlib.pdf
+    XSizeHints *win_size_hints;
+    win_size_hints = XAllocSizeHints();
+    if (!win_size_hints) {
+        fprintf(stderr, "XAllocSizeHints - couldn't allocate\n");
+//        exit(EXIT_FAILURE);
+    }
+//    search for XSizeHints here https://www.x.org/releases/current/doc/libX11/libX11/libX11.pdf
+//    https://www.linuxquestions.org/questions/programming-9/%5Bc%5D-x11-window-of-fixed-aspect-ratio-843617/
+    win_size_hints->flags= PMinSize | PMaxSize;
+//    win_size_hints->width = screen_settings->xsize;
+//    win_size_hints->height = screen_settings->ysize;
+    win_size_hints->min_width = win_size_hints->max_width = screen_settings->xsize;
+    win_size_hints->min_height = win_size_hints->max_height = screen_settings->ysize;
+    XSetWMNormalHints(screen_x11->display, screen_x11->window, win_size_hints);
+    XFree(win_size_hints);
 }
 
 screen_info_rgb_t *get_screen_info(screen_x11_t *screen) {
