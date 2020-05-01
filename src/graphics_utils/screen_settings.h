@@ -4,8 +4,9 @@
 
 typedef struct screen_settings {
     char *window_title;
-    uint32_t xsize;
-    uint32_t ysize;
+    uint32_t width;
+    uint32_t height;
     int targetFps;
     bool show_rendering_info;
+    bool fullscreen;
 } screen_settings_t;

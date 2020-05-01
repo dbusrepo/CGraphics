@@ -9,11 +9,15 @@ target_sources(screen_x11
         ../graphics_utils/screen_info_rgb.h
         ../graphics_utils/screen_info_rgb_p.h
         ../graphics_utils/screen_settings.h
+        ../graphics_utils/screen_callback.h
+        ../graphics_utils/input_keys.h
         ../app/screen.h
         PUBLIC
         ../app/screen.h
         ../graphics_utils/screen_info_rgb.h
         ../graphics_utils/screen_settings.h
+        ../graphics_utils/screen_callback.h
+        ../graphics_utils/input_keys.h
         )
 
 target_compile_options(screen_x11
@@ -33,5 +37,6 @@ target_link_libraries(screen_x11
         X11
         Xext
         Xt
-#        graphics_utils
+        Xxf86vm
+        #        graphics_utils
         )

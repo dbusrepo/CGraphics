@@ -41,16 +41,14 @@ struct app {
     screen_settings_t *screen_settings;
     uint32_t xsize;
     uint32_t ysize;
-    // screen x11 ???
+    // screen_idx x11 ???
     screen_info_rgb_t *screen_info_rgb;
     int64_t period; // period between drawing // all times are in _nanosecs_
     int64_t start_time;
     stats_t stats;
     bool is_running;
-    // TODO:
-    update_fptr_t update_fptr; // refactor name?
-    render_fptr_t render_fptr;
-    key_event_fptr_t key_event_fptr;
+    fun_update_t update_callback; // refactor name?
+    fun_render_t render_callback;
 };
 
 static inline void init_stats(app_t *app);
@@ -65,18 +63,20 @@ static void print_rendering_info(app_t *app);
 
 app_t *init_app(screen_settings_t *screen_settings) {
     app_t *app = malloc(sizeof(app_t));
+    memset(app, 0, sizeof(app_t));
 
     app->screen_settings = screen_settings;
     app->screen = init_screen(screen_settings);
     app->screen_info_rgb = get_screen_info(app->screen);
-    app->xsize = screen_settings->xsize;
-    app->ysize = screen_settings->ysize;
+    app->xsize = screen_settings->width;
+    app->ysize = screen_settings->height;
     app->period = NANO_IN_SEC / screen_settings->targetFps;
     app->is_running = false;
     app->start_time = 0;
-    app->update_fptr = NULL; // refactor name?
-    app->render_fptr = NULL;
-    app->key_event_fptr = NULL;
+
+    app->update_callback = NULL; // refactor name?
+    app->render_callback = NULL;
+
     init_stats(app);
 
     font_init(app->screen_info_rgb);
@@ -85,18 +85,20 @@ app_t *init_app(screen_settings_t *screen_settings) {
     return app;
 }
 
-void run_event_loop(app_t *app,
-                    update_fptr_t update_fptr,
-                    render_fptr_t render_fptr,
-                    key_event_fptr_t key_event_fptr) {
+void run_app(app_t *app,
+             fun_update_t update_fun,
+             fun_render_t render_fun,
+             fun_key_t key_fun) {
+
+    set_key_callback(app->screen, key_fun);
 
     int64_t over_sleep_time = 0;
     int64_t excess = 0;
     int64_t period = app->period; // save it here
 
-    app->update_fptr = update_fptr;
-    app->render_fptr = render_fptr;
-    app->key_event_fptr = key_event_fptr;
+
+    app->update_callback = update_fun;
+    app->render_callback = render_fun;
 
     int64_t before_time = nano_time();
     app->start_time = before_time;
@@ -116,7 +118,7 @@ void run_event_loop(app_t *app,
             struct timespec sleep_time_s = {0, sleep_time };
             nanosleep(&sleep_time_s, NULL);
             over_sleep_time = (nano_time() - after_time) - sleep_time;
-        } else { // sleepTime <= 0; the render_fptr took longer than the period
+        } else { // sleepTime <= 0; the render_callback took longer than the period
             // print rendering is slowing down?
             excess -= sleep_time; // store excess prev_time value
             over_sleep_time = 0;
@@ -124,12 +126,12 @@ void run_event_loop(app_t *app,
 
         before_time = nano_time();
 
-        /* If render_fptr animation is taking too long, update_fptr the state
+        /* If render_callback animation is taking too long, update_callback the state
            without rendering it, to get the updates/sec nearer to
            the required FPS. */
         int skips = 0;
         while ((excess > period) && (skips < MAX_FRAME_SKIPS)) {
-            // update_fptr state but don’t render_fptr
+            // update_callback state but don’t render_callback
             excess -= period;
             update(app, 0);
             ++skips;
@@ -140,25 +142,22 @@ void run_event_loop(app_t *app,
     }
 
     print_final_stats(app);
-//    close_screen(app);
+
+    terminate_screen(app->screen);
+
     exit(EXIT_SUCCESS);
+}
+
+void terminate_app(app_t *app) {
+    app->is_running = false;
 }
 
 /***************************************************************************************/
 // PRIVATE FUNCTIONS
 
 static void update(app_t *app, int64_t elapsed_time) {
-    check_event(app->screen, app, key_event);
-    app->update_fptr(elapsed_time);
-}
-
-static void key_event(app_t *app, int key_code) {
-    switch(key_code) {
-        case 'q': {
-            app->is_running = false;
-        }
-    }
-    app->key_event_fptr(key_code);
+    poll_events(app->screen);
+    app->update_callback(elapsed_time);
 }
 
 static inline void init_stats(app_t *app) {
@@ -169,13 +168,13 @@ static inline void init_stats(app_t *app) {
 
 static void render(app_t *app) {
     clear_screen(app);
-    app->render_fptr();
+    app->render_callback();
     print_rendering_info(app);
     blit(app->screen);
 }
 
 static void clear_screen(app_t *app) {
-    memset(app->screen_info_rgb->buffer, 0x00,
+    memset(app->screen_info_rgb->buffer, 255, // 0x00
             (size_t)app->xsize * app->ysize * app->screen_info_rgb->bytes_per_pixel);
 }
 

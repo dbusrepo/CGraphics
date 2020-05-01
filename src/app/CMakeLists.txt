@@ -9,10 +9,14 @@ target_sources(app
         ../graphics_utils/common.h
         ../graphics_utils/screen_settings.h
         ../graphics_utils/screen_info_rgb.h
+        ../graphics_utils/screen_callback.h
+        ../graphics_utils/input_keys.h
         ../graphics_utils/font.h
         PUBLIC
         app.h
         ../graphics_utils/screen_settings.h
+        ../graphics_utils/screen_callback.h
+        ../graphics_utils/input_keys.h
         )
 
 # TODO

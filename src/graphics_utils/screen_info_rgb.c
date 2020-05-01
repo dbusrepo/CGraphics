@@ -34,6 +34,10 @@ screen_info_rgb_t *init_screen_info_rgb(
     return screen_info;
 }
 
+void update_screen_buffer(screen_info_rgb_t *screen_info, uint8_t *buffer) {
+    screen_info->buffer = buffer;
+}
+
 uint32_t ext_to_native(screen_info_rgb_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
     uint32_t red_rescaled, green_rescaled, blue_rescaled;
 

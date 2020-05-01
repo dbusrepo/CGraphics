@@ -107,7 +107,7 @@ void font_init(screen_info_rgb_t *screen_info) {
 }
 
 
-//#define SW_RAST_Y_REVERSAL(ysize,y) ((ysize) - (y))
+//#define SW_RAST_Y_REVERSAL(height,y) ((height) - (y))
 #define SW_RAST_Y_REVERSAL(ysize,y) (y)
 
 void draw_text(screen_info_rgb_t *screen_info, uint32_t xsize, uint32_t ysize, uint32_t x, uint32_t y, const char *text) {
