@@ -16,6 +16,7 @@ void run_app(app_t *app,
              fun_render_t render_fun,
              fun_key_t key_fun);
 
+void toggle_fullscreen_app(app_t *app);
 void terminate_app(app_t *app); // used in the call back
 
 ///* Image/texture information */

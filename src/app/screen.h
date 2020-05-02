@@ -10,8 +10,8 @@ typedef struct screen screen_t;
 
 screen_t *init_screen(screen_settings_t *screen_settings);
 screen_info_rgb_t *get_screen_info(screen_t *screen);
-void poll_events(screen_t *screen);
-void blit(screen_t *screen);
+void poll_events_screen(screen_t *screen);
+void blit_screen(screen_t *screen);
 void terminate_screen(screen_t *screen);
-
-void set_key_callback(screen_t *screen, fun_key_t key_fun);
+void toggle_fullscreen_mode(screen_t *screen);
+void set_key_callback_screen(screen_t *screen, fun_key_t key_fun);

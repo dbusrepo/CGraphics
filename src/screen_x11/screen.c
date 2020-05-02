@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #define __USE_POSIX199309
 #include <time.h>
 #include <limits.h>
@@ -32,7 +33,8 @@ typedef struct screen screen_x11_t;
 struct screen {
     // callback functions ??
     fun_key_t key_callback;    // see glfw.h for other callbacks (and remember to init them!)
-    fun_close_t windowCloseCallback; // TODO aggiungere a app
+    fun_close_t window_close_callback; // TODO aggiungere a app
+    fun_char_t char_callback;
 
     // Window and framebuffer attributes
     bool no_resize;     // Resize- and maximize gadgets disabled flag
@@ -44,7 +46,7 @@ struct screen {
     bool opened;          // Flag telling if window is opened or not // TODO
     bool active;          // Application active flag // TODO
     bool iconified;       // Window iconified flag // TODO
-    uint32_t x, y;      // win top left coords
+//    uint32_t x, y;      // win top left coords
     uint32_t width, height;                 // window and screen_buffer size
     uint32_t depth, bytespp, scanline_pad; // X11: info about X server
     uint32_t buf_size;                      // screen_buffer size
@@ -102,10 +104,12 @@ struct screen {
     } input;
 };
 
+static void flush_printf(const char *format, ...);
+
 // TODO fix names??
+static void center_window(screen_x11_t *screen);
 static void init_screen_buffer(screen_x11_t *screen);
 static XImage *create_image(screen_x11_t *screen_x11);
-static void calc_win_center_coords(screen_x11_t *screen);
 static void set_size_hints(screen_x11_t *screen_x11);
 static bool check_for_EWMH(screen_x11_t *screen);
 // TODO
@@ -127,19 +131,22 @@ static void set_mouse_cursor_pos(screen_x11_t *screen, int x, int y);
 static void change_video_mode(screen_x11_t *screen, int mode);
 static int find_best_video_mode(screen_x11_t *screen, int *width, int *height);
 static void restore_video_mode(screen_x11_t *screen);
-static void set_window_size(screen_x11_t *screen);
-static void leave_full_screen_mode(screen_x11_t *screen);
-static void enter_full_screen(screen_x11_t *screen);
+static void update_window_size(screen_x11_t *screen);
+static void leave_fullscreen(screen_x11_t *screen);
+static void enter_fullscreen(screen_x11_t *screen);
 static void init_atom_support(screen_x11_t *screen_x11);
 static void show_mouse_cursor(screen_x11_t *screen);
 static bool process_single_event(screen_x11_t *screen);
 static void input_key(screen_x11_t *screen, int key, int action);
+static void input_char(screen_x11_t *screen, int character, int action);
 static void clear_input(screen_x11_t *screen);
-
 static void grab_mouse(screen_x11_t *screen);
-
 static int translateKey(screen_x11_t *screen, int keycode);
+static int translate_char(XKeyEvent *event);
 
+static void center_mouse(screen_x11_t *screen);
+
+void move_mouse_root_win(const screen_x11_t *screen);
 
 // ...
 // TODO see createWindow e _glfwPlatformOpenWindow in glfw/lib/x11/x11_window.c
@@ -185,7 +192,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 
     screen->screen_idx = DefaultScreen(screen->display);
     screen->vis = DefaultVisual(screen->display, screen->screen_idx);
-    screen->root = RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
+    screen->root = RootWindow(screen->display, screen->screen_idx);//RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
     screen->window = XCreateWindow(screen->display,                // display
                                    screen->root,     // parent
                                    0, 0,                   // x, y position, remapped later set_window_with set_window_pos
@@ -201,7 +208,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 
     // Check whether an EWMH-compliant window manager is running
     screen->hasEWMH = check_for_EWMH(screen);
-
+    screen->overrideRedirect = false;
     if(screen->fullscreen && !screen->hasEWMH ) {
         // This is the butcher's way of removing window decorations
         // Setting the override-redirect attribute on a window makes the window
@@ -225,13 +232,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     screen->cursor = create_null_cursor(screen->display, screen->root );
     set_window_title(screen, screen_settings->window_title);
 
-//    set_size_hints(screen);
-
-    // Make sure the window is mapped before proceeding
     XMapWindow(screen->display, screen->window);
-    calc_win_center_coords(screen);
-    set_window_pos(screen, screen->x, screen->y); // da chiamare dopo XMapWindow
-    XFlush(screen->display);
 
     switch (screen->vis->class) {
         // constants for visual classes are defined in /usr/include/X11/X.h
@@ -285,14 +286,41 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     screen->pointer_grabbed = false;
 
     screen->FS.modeChanged = false;
-    set_window_size(screen);
+    update_window_size(screen);
 
     if (screen->fullscreen) {
-        enter_full_screen(screen);
+        enter_fullscreen(screen);
+    } else {
+        center_window(screen); // Make sure the window is mapped before using this
+
+//        XWindowAttributes xwa;
+//        XGetWindowAttributes(screen->display, screen->window, &xwa);
+//        printf("%d %d\n", xwa.x, xwa.y);
+
+//        Window child;
+//        int x = -1, y = -1;
+//        XTranslateCoordinates(screen->display, screen->window, screen->root,
+//                screen->width/2,
+//                screen->height/2,
+//                &x, &y, &child);
+//        printf("%d %d\n", x, y);
+////        XFlush(screen->display);
+//        XWarpPointer(screen->display, None, screen->root, 0,0,0,0, x, y );
+//        XFlush(screen->display);
+
+        //        set_mouse_cursor_pos(screen, x, y);
+//        int x, y;
+//        Window child;
+//        XWindowAttributes xwa;
+//        int xtres = XTranslateCoordinates( screen->display, screen->window, screen->root, 100, 200, &x, &y, &child );
+//        XGetWindowAttributes( screen->display, screen->window, &xwa );
+//        printf( "%d %d - %d\n", x - xwa.x, y - xwa.y, xtres);
+//
+//        XWarpPointer(screen->display, None, screen->window, 0,0,0,0, 200, 100);
     }
 
     // Process the window map event and any other that may have arrived
-    poll_events(screen);
+    poll_events_screen(screen);
 
     init_screen_buffer(screen);
 
@@ -324,12 +352,26 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     }
 
     screen->key_callback = NULL;
-    screen->windowCloseCallback = NULL;
+    screen->window_close_callback = NULL;
+    screen->char_callback = NULL;
+
+    // for testing...
+//    struct timespec sleep_time_s = {2, 0 };
+//    nanosleep(&sleep_time_s, NULL);
+//    exit(1);
 
     return screen;
 }
 
-void set_key_callback(screen_t *screen, fun_key_t key_fun) {
+void center_window(screen_x11_t *screen) {
+    int display_width = XDisplayWidth(screen->display, screen->screen_idx) / 2; // TODO fix /2 ?? pare che la width comprenda entrambi i monitor...
+    int display_height = XDisplayHeight(screen->display, screen->screen_idx);
+    int x = (display_width - screen->width) / 2;
+    int y = (display_height - screen->height) / 2;
+    set_window_pos(screen, x, y); // da chiamare dopo XMapWindow
+}
+
+void set_key_callback_screen(screen_t *screen, fun_key_t key_fun) {
     screen->key_callback = key_fun;
 }
 
@@ -339,8 +381,11 @@ screen_info_rgb_t *get_screen_info(screen_x11_t *screen) {
 
 void terminate_screen(screen_x11_t *screen) {
     // vedi _glfwPlatformCloseWindow
+    printf("\nexiting...\n");
+
     if (screen->fullscreen) {
-        leave_full_screen_mode(screen);
+        printf("leaving full screen...\n");
+        leave_fullscreen(screen);
     }
 
     free(screen->screen_info_rgb);
@@ -373,7 +418,7 @@ void terminate_screen(screen_x11_t *screen) {
 //========================================================================
 // Poll for new window and input events
 //========================================================================
-void poll_events(screen_x11_t *screen) {
+void poll_events_screen(screen_x11_t *screen) {
 
     bool close_requested = false;
 
@@ -390,7 +435,7 @@ void poll_events(screen_x11_t *screen) {
     // Did we get mouse movement in fully enabled hidden cursor mode?
     if(screen->input.MouseMoved && screen->pointer_hidden) {
 
-        set_mouse_cursor_pos(screen, screen->width/2, screen->height/2);
+        center_mouse(screen);
 
         // NOTE: This is a temporary fix.  It works as long as you use offsets
         //       accumulated over the course of a frame, instead of performing
@@ -398,13 +443,31 @@ void poll_events(screen_x11_t *screen) {
         XFlush(screen->display);
     }
 
-    if(close_requested && screen->windowCloseCallback) {
-        close_requested = screen->windowCloseCallback();
+    if(close_requested && screen->window_close_callback) {
+        close_requested = screen->window_close_callback();
     }
 
     if(close_requested) {
         terminate_screen(screen);
     }
+
+}
+
+void move_mouse_root_win(const screen_x11_t *screen) {
+    Window child;
+    int x = -1, y = -1;
+    XTranslateCoordinates(screen->display, screen->window, screen->root,
+            screen->width/2,
+            screen->height/2,
+            &x, &y, &child);
+    printf("%d %d\n", x, y);
+//        XFlush(screen->display);
+    XWarpPointer(screen->display, None, screen->root, 0,0,0,0, x, y );
+    XFlush(screen->display);
+}
+
+static void center_mouse(screen_x11_t *screen) {
+    set_mouse_cursor_pos(screen, screen->width / 2, screen->height / 2);
 }
 
 //// vedi translateKey in window.c glfw
@@ -412,7 +475,7 @@ void poll_events(screen_x11_t *screen) {
 //
 ////    process_single_event(screen);
 //
-//    poll_events(screen);
+//    poll_events_screen(screen);
 //
 //    // required in fullscreen ?
 ////    set_mouse_cursor_pos(screen, 0, 0);
@@ -429,7 +492,7 @@ void poll_events(screen_x11_t *screen) {
 ////    }
 //}
 
-void blit(screen_x11_t *screen) {
+void blit_screen(screen_x11_t *screen) {
     XShmPutImage(screen->display, screen->window, screen->gc, screen->ximg,
                  0, 0, 0, 0,
                  (unsigned int)screen->width, (unsigned int)screen->height,
@@ -437,7 +500,22 @@ void blit(screen_x11_t *screen) {
     XSync(screen->display, False);
 }
 
-
+void toggle_fullscreen_mode(screen_t *screen) {
+    screen->fullscreen = !screen->fullscreen;
+    if (screen->fullscreen) {
+        flush_printf("going fullscreen...\n");
+//        update_window_size(screen);
+//        enter_fullscreen(screen);
+    } else {
+        flush_printf("going windowed...\n");
+//        leave_fullscreen(screen);
+//        update_window_size(screen);
+//        center_window(screen);
+//        center_mouse(screen);
+    }
+    // Process the window map event and any other that may have arrived
+    poll_events_screen(screen);
+}
 
 /**************************************************************************************/
 // PRIVATE FUNCTIONS
@@ -455,13 +533,6 @@ static void init_screen_buffer(screen_x11_t *screen) {
 static void set_window_title(screen_x11_t *screen, const char *title) {
     XStoreName(screen->display, screen->window, title);
     XSetIconName(screen->display, screen->window, title);
-}
-
-static void calc_win_center_coords(screen_x11_t *screen) {
-    int display_width = XDisplayWidth(screen->display, screen->screen_idx) / 2; // TODO fix /2 ?? pare che la width comprenda entrambi i monitor...
-    int display_height = XDisplayHeight(screen->display, screen->screen_idx);
-    screen->x = (display_width - screen->width) / 2;
-    screen->y = (display_height - screen->height) / 2;
 }
 
 static XImage *create_image(screen_x11_t *screen_x11) {
@@ -522,7 +593,7 @@ static void init_atom_support(screen_x11_t *screen_x11) {
                                                      "_NET_WM_STATE_FULLSCREEN");
 }
 
-static void enter_full_screen(screen_x11_t *screen) {
+static void enter_fullscreen(screen_x11_t *screen) {
 
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
 
@@ -560,7 +631,7 @@ static void enter_full_screen(screen_x11_t *screen) {
         event.xclient.data.l[0] = _NET_WM_STATE_ADD;
         event.xclient.data.l[1] = screen->wmStateFullscreen;
         event.xclient.data.l[2] = 0; // No secondary property
-        event.xclient.data.l[3] = 1; // Sender is a normal application
+        event.xclient.data.l[3] = 1; // Sender is a normal application // TODO try 0l as in sdl?
 
         //    enterFullscreenMode
         XSendEvent(screen->display,
@@ -589,7 +660,39 @@ static void enter_full_screen(screen_x11_t *screen) {
     // the mouse cursor to the upper left corner (and then to the center)
     // This hack should be harmless on saner systems as well
     set_mouse_cursor_pos(screen, 0, 0);
-    set_mouse_cursor_pos(screen, screen->width / 2, screen->height / 2 );
+    center_mouse(screen);
+    XFlush(screen->display);
+}
+
+static void leave_fullscreen(screen_x11_t *screen) {
+
+    restore_video_mode(screen);
+
+    screen->FS.modeChanged = false;
+
+    // Ask the window manager to make the GLFW window a normal window
+    // Normal windows usually have frames and other decorations
+    XEvent event = { 0 };
+
+    event.type = ClientMessage;
+    event.xclient.window = screen->window;
+    event.xclient.format = 32; // Data is 32-bit longs
+    event.xclient.message_type = screen->wmState;
+    event.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
+    event.xclient.data.l[1] = screen->wmStateFullscreen;
+    event.xclient.data.l[2] = 0; // No secondary property
+    event.xclient.data.l[3] = 1; // Sender is a normal application
+
+    XSendEvent(screen->display,
+               screen->root,
+               False,
+               SubstructureNotifyMask | SubstructureRedirectMask,
+               &event);
+
+    if (screen->mouseLock) {
+        show_mouse_cursor(screen);
+    }
+
     XFlush(screen->display);
 }
 
@@ -651,9 +754,10 @@ static void set_size_hints(screen_x11_t *screen) {// see http://ftp.dim13.org/pu
 // Set the window size
 //========================================================================
 
-static void set_window_size(screen_x11_t *screen)
+static void update_window_size(screen_x11_t *screen)
 {
-    int mode = 0, rate, sizeChanged = false;
+    int mode = 0, rate;
+    bool size_changed = false;
     int width = screen->width; // start with these...
     int height = screen->height;
 
@@ -670,20 +774,22 @@ static void set_window_size(screen_x11_t *screen)
         XResizeWindow(screen->display, screen->window, width, height);
         screen->width = width;
         screen->height = height;
-        sizeChanged = true;
+        size_changed = true; // TODO notify the app?
+        printf("win size changed\n");
     }
 
-    if(screen->fullscreen )
-    {
+    if (screen->fullscreen) {
         // Change video mode, keeping current refresh rate
         change_video_mode(screen, mode);
     }
 
     // Set window size (if not already changed)
-    if(!sizeChanged)
-    {
+    if (!size_changed) {
         XResizeWindow(screen->display, screen->window, width, height);
     }
+
+    XRaiseWindow(screen->display, screen->window);
+    XFlush(screen->display);
 }
 
 // https://stackoverflow.com/questions/12706631/x11-change-resolution-and-make-window-fullscreen
@@ -802,36 +908,6 @@ static Atom getSupportedAtom(screen_x11_t *screen_x11, Atom *supportedAtoms, uns
     return None;
 }
 
-static void leave_full_screen_mode(screen_x11_t *screen) {
-
-    restore_video_mode(screen);
-
-    screen->FS.modeChanged = false;
-
-    // Ask the window manager to make the GLFW window a normal window
-    // Normal windows usually have frames and other decorations
-    XEvent event = { 0 };
-
-    event.type = ClientMessage;
-    event.xclient.window = screen->window;
-    event.xclient.format = 32; // Data is 32-bit longs
-    event.xclient.message_type = screen->wmState;
-    event.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
-    event.xclient.data.l[1] = screen->wmStateFullscreen;
-    event.xclient.data.l[2] = 0; // No secondary property
-    event.xclient.data.l[3] = 1; // Sender is a normal application
-
-    XSendEvent(screen->display,
-               screen->root,
-               False,
-               SubstructureNotifyMask | SubstructureRedirectMask,
-               &event);
-
-    if(screen->mouseLock ) {
-        show_mouse_cursor(screen);
-    }
-}
-
 static void restore_video_mode(screen_x11_t *screen) {
     // Unlock mode switch
     XF86VidModeLockModeSwitch(screen->display, screen->screen_idx, 0 );
@@ -892,27 +968,26 @@ static void show_mouse_cursor(screen_x11_t *screen) {
 //========================================================================
 static void hide_mouse_cursor(screen_x11_t *screen) {
     // Hide cursor
-    if (!screen->pointer_hidden)
-    {
+    if (!screen->pointer_hidden) {
         // comment these 2 lines to not hide the cursor
         XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
         screen->pointer_hidden = True;
     }
-
     grab_mouse(screen);
-
-    // Move cursor to the middle of the window
-    set_mouse_cursor_pos(screen, screen->width / 2, screen->height / 2 );
+    center_mouse(screen); // Move cursor to the middle of the window
 }
 
 static void grab_mouse(screen_x11_t *screen) {// Grab cursor to user window
     if(!screen->pointer_grabbed) {
-        if(XGrabPointer(screen->display, screen->window, True,
-                          ButtonPressMask | ButtonReleaseMask |
-                          PointerMotionMask, GrabModeAsync, GrabModeAsync,
-                         screen->window, None, CurrentTime ) == GrabSuccess ) {
+        int grab_res = XGrabPointer(screen->display, screen->window, True,
+                                    ButtonPressMask | ButtonReleaseMask |
+                                    PointerMotionMask, GrabModeAsync, GrabModeAsync,
+                                    screen->window, None, CurrentTime);
+        if(grab_res == GrabSuccess ) {
             screen->pointer_grabbed = True;
             printf("pointer grabbed\n");
+        } else {
+            printf("X server refused mouse capture\n");
         }
     }
 }
@@ -927,7 +1002,7 @@ void set_mouse_cursor_pos(screen_x11_t *screen, int x, int y)
     screen->input.CursorPosY = y;
 
     XWarpPointer(screen->display, None, screen->window, 0,0,0,0, x, y );
-//    XFlush(screen->display);
+    XFlush(screen->display);
 }
 
 
@@ -1025,7 +1100,8 @@ static bool check_for_EWMH(screen_x11_t *screen)
 //========================================================================
 
 static void set_window_pos(screen_x11_t *screen, int x, int y ) {
-    XMoveWindow(screen->display, screen->window, x, y );
+    XMoveWindow(screen->display, screen->window, x, y);
+    XFlush(screen->display);
 }
 
 //{
@@ -1048,30 +1124,57 @@ static bool process_single_event(screen_x11_t *screen) {
     // if or while?
     switch (event.type)
     {
-        case KeyPress: {
-            // A keyboard key was pressed
+        case KeyPress: { // A keyboard key was pressed
 
             // Translate and report key press
             input_key(screen, translateKey(screen, event.xkey.keycode), KEY_PRESS);
 
-//                // Translate and report character input
-//                if( _glfwWin.charCallback )
-//                {
-//                    _glfwInputChar( translateChar( &event.xkey ), KEY_PRESS );
-//                }
-
-//                char ch;
-//                KeySym keysym;
-//                XComposeStatus xcompstat;
-////                printf("pressed\n");
-//                XLookupString(&event.xkey, &ch, 1, &keysym, &xcompstat);
-////                app_key_event_fptr(app, ch);  // TODO
+            // Translate and report character input
+            if  (screen->char_callback) {
+                input_char(screen, translate_char(&event.xkey), KEY_PRESS);
+            }
             break;
         }
 
-        case KeyRelease:
-//                printf("released\n");
+        case KeyRelease: { // A keyboard key was released
+
+            // Do not report key releases for key repeats. For key repeats we
+            // will get KeyRelease/KeyPress pairs with similar or identical
+            // time stamps. User selected key repeat filtering is handled in
+            // _glfwInputKey()/_glfwInputChar().
+            if (XEventsQueued(screen->display, QueuedAfterReading))
+            {
+                XEvent nextEvent;
+                XPeekEvent(screen->display, &nextEvent);
+
+                if( nextEvent.type == KeyPress &&
+                    nextEvent.xkey.window == event.xkey.window &&
+                    nextEvent.xkey.keycode == event.xkey.keycode )
+                {
+                    // This last check is a hack to work around key repeats
+                    // leaking through due to some sort of time drift
+                    // Toshiyuki Takahashi can press a button 16 times per
+                    // second so it's fairly safe to assume that no human is
+                    // pressing the key 50 times per second (value is ms)
+                    if( ( nextEvent.xkey.time - event.xkey.time ) < 20 ) {
+                        // Do not report anything for this event
+                        break;
+                    }
+                }
+            }
+
+            // Translate and report key press
+            input_key(screen, translateKey(screen, event.xkey.keycode), KEY_RELEASE);
+
+            // Translate and report character input
+            if  (screen->char_callback) {
+                input_char(screen, translate_char(&event.xkey), KEY_RELEASE);
+            }
             break;
+        }
+
+
+
         default:
             break;
     }
@@ -1146,6 +1249,68 @@ static void input_key(screen_x11_t *screen, int key, int action)
     if (screen->key_callback && (screen->input.KeyRepeat || !keyrepeat)) {
         screen->key_callback(key, action);
     }
+}
+
+//========================================================================
+// Register (keyboard) character activity
+//========================================================================
+
+static void input_char(screen_x11_t *screen, int character, int action)
+{
+    int keyrepeat = 0;
+
+    // Valid Unicode (ISO 10646) character?
+    if (!( (character >= 32 && character <= 126) || character >= 160)) {
+        return;
+    }
+
+    // Is this a key repeat?
+    if (action == KEY_PRESS && screen->input.lastChar == character) {
+        keyrepeat = 1;
+    }
+
+    // Store this character as last character (or clear it, if released)
+    if (action == KEY_PRESS) {
+        screen->input.lastChar = character;
+    }
+    else {
+        screen->input.lastChar = 0;
+    }
+
+    if (action != KEY_PRESS) {
+        // This intentionally breaks release notifications for Unicode
+        // characters, partly to see if anyone cares but mostly because it's
+        // a nonsensical concept to begin with
+        //
+        // It will remain broken either until its removal in the 3.0 API or
+        // until someone explains, in a way that makes sense to people outside
+        // the US and Scandinavia, what "Unicode character up" actually means
+        //
+        // If what you want is "physical key up" then you should be using the
+        // key functions and/or the key callback, NOT the Unicode input
+        //
+        // However, if your particular application uses this misfeature for...
+        // something, you can re-enable it by removing this if-statement
+        return;
+    }
+
+    if(screen->char_callback && (screen->input.KeyRepeat || !keyrepeat)) {
+        screen->char_callback(character, action);
+    }
+}
+
+static int translate_char(XKeyEvent *event)
+{
+//    KeySym keysym;
+//    // Get X11 keysym
+//    XLookupString( event, NULL, 0, &keysym, NULL );
+//    // Convert to Unicode (see x11_keysym2unicode.c)
+//    return (int) _glfwKeySym2Unicode( keysym );
+    char ch;
+    KeySym keysym;
+    XComposeStatus xcompstat;
+    XLookupString(event, &ch, 1, &keysym, &xcompstat);
+    return ch;
 }
 
 static int translateKey(screen_x11_t *screen, int keycode) {
@@ -1270,6 +1435,14 @@ static int translateKey(screen_x11_t *screen, int keycode) {
             }
             return KEY_UNKNOWN;
     }
+}
+
+static void flush_printf(const char *format, ...) {
+    va_list arg;
+    va_start (arg, format);
+    printf(format, arg);
+    va_end (arg);
+    fflush(stdout);
 }
 
 

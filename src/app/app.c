@@ -90,7 +90,7 @@ void run_app(app_t *app,
              fun_render_t render_fun,
              fun_key_t key_fun) {
 
-    set_key_callback(app->screen, key_fun);
+    set_key_callback_screen(app->screen, key_fun);
 
     int64_t over_sleep_time = 0;
     int64_t excess = 0;
@@ -152,11 +152,15 @@ void terminate_app(app_t *app) {
     app->is_running = false;
 }
 
+void toggle_fullscreen_app(app_t *app) {
+    toggle_fullscreen_mode(app->screen);
+}
+
 /***************************************************************************************/
 // PRIVATE FUNCTIONS
 
 static void update(app_t *app, int64_t elapsed_time) {
-    poll_events(app->screen);
+    poll_events_screen(app->screen);
     app->update_callback(elapsed_time);
 }
 
@@ -170,7 +174,7 @@ static void render(app_t *app) {
     clear_screen(app);
     app->render_callback();
     print_rendering_info(app);
-    blit(app->screen);
+    blit_screen(app->screen);
 }
 
 static void clear_screen(app_t *app) {
@@ -234,7 +238,8 @@ static void print_final_stats(app_t *app) {
            "Frame Count/Loss: %" PRId64 "/" "%"PRId64 "\n"
            "Average FPS: %.2f\n"
            "Average UPS: %.2f\n"
-           "Time spent: %" PRId64 "s",
+           "Time spent: %" PRId64 "s"
+           "\n",
            stats->frame_counter, stats->total_frames_skipped,
            stats->average_fps, stats->average_ups,
            stats->total_elapsed_time / NANO_IN_SEC
