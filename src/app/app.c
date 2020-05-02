@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#define __USE_POSIX199309
-#include <time.h>
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -52,7 +50,6 @@ struct app {
 };
 
 static inline void init_stats(app_t *app);
-static inline int64_t nano_time(void);
 static void update(app_t *app, int64_t elapsed_time);
 static void key_event(app_t *app, int key_code);
 static void clear_screen(app_t *app);
@@ -246,12 +243,5 @@ static void print_final_stats(app_t *app) {
     );
 //    https://stackoverflow.com/questions/12450066/flushing-buffers-in-c
 //    fflush(stdout);
-}
-
-static inline int64_t nano_time() {
-    struct timespec time;
-//    https://stackoverflow.com/questions/3523442/difference-between-clock-realtime-and-clock-monotonic
-    clock_gettime(CLOCK_MONOTONIC_RAW, &time);
-    return time.tv_sec * NANO_IN_SEC + time.tv_nsec;
 }
 

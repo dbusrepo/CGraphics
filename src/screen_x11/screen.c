@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#define __USE_POSIX199309
-#include <time.h>
 #include <limits.h>
 #include <inttypes.h>
 #include <X11/Intrinsic.h>
@@ -11,6 +9,7 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/xf86vmode.h>
+//#include <X11/extensions/Xrandr.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <tiff.h>
@@ -35,6 +34,7 @@ struct screen {
     fun_key_t key_callback;    // see glfw.h for other callbacks (and remember to init them!)
     fun_close_t window_close_callback; // TODO aggiungere a app
     fun_char_t char_callback;
+    fun_mouse_pos_t mouse_pos_callback;
 
     // Window and framebuffer attributes
     bool no_resize;     // Resize- and maximize gadgets disabled flag
@@ -62,7 +62,7 @@ struct screen {
     XShmSegmentInfo shminfo;        // X11 shm
     XImage *ximg;                   // X11: XImage which will be actually shown
     uint32_t screen_idx;            // Screen ID
-    int64_t event_mask;             // event checking mask
+//    int64_t event_mask;             // event checking mask // TODO not used anymore (?)
     Display *display;                     // X11: Display (connection to X server)
     Cursor cursor;                  // Invisible cursor for hidden cursor
     Atom wmStateFullscreen;         // _NET_WM_STATE_FULLSCREEN atom
@@ -107,6 +107,7 @@ struct screen {
 static void flush_printf(const char *format, ...);
 
 // TODO fix names??
+static void init_cursor_pos(screen_x11_t *screen);
 static void center_window(screen_x11_t *screen);
 static void init_screen_buffer(screen_x11_t *screen);
 static XImage *create_image(screen_x11_t *screen_x11);
@@ -143,10 +144,17 @@ static void clear_input(screen_x11_t *screen);
 static void grab_mouse(screen_x11_t *screen);
 static int translateKey(screen_x11_t *screen, int keycode);
 static int translate_char(XKeyEvent *event);
-
+static void get_cursor_pos(screen_x11_t *screen, int *windowX, int *windowY); // get the pos wrt the window
 static void center_mouse(screen_x11_t *screen);
 
-void move_mouse_root_win(const screen_x11_t *screen);
+static void print_window_attr(screen_x11_t *screen);
+static void wait_events(screen_x11_t *screen);
+static void wait_ms(int ms);
+
+static void move_mouse_root_win(screen_x11_t *screen); // TODO use?
+
+
+void print_coord_root(screen_t *screen);
 
 // ...
 // TODO see createWindow e _glfwPlatformOpenWindow in glfw/lib/x11/x11_window.c
@@ -192,7 +200,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 
     screen->screen_idx = DefaultScreen(screen->display);
     screen->vis = DefaultVisual(screen->display, screen->screen_idx);
-    screen->root = RootWindow(screen->display, screen->screen_idx);//RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
+    screen->root = DefaultRootWindow(screen->display);//RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
     screen->window = XCreateWindow(screen->display,                // display
                                    screen->root,     // parent
                                    0, 0,                   // x, y position, remapped later set_window_with set_window_pos
@@ -267,12 +275,11 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             exit(EXIT_FAILURE);
     }
 
-    screen->event_mask = KeyPressMask | KeyReleaseMask;
-    // quali mask usare? vedi wa.event_mask =  in createWindow
-//    StructureNotifyMask | KeyPressMask | KeyReleaseMask |
-//    PointerMotionMask | ButtonPressMask | ButtonReleaseMask |
-//    ExposureMask | FocusChangeMask | VisibilityChangeMask;
-    XSelectInput(screen->display, screen->window, screen->event_mask);
+    XSelectInput(screen->display, screen->window, (FocusChangeMask | EnterWindowMask | LeaveWindowMask |
+                                                   ExposureMask | ButtonPressMask | ButtonReleaseMask |
+                                                   PointerMotionMask | KeyPressMask | KeyReleaseMask |
+                                                   PropertyChangeMask | StructureNotifyMask |
+                                                   KeymapStateMask));
 
     screen->gc = XCreateGC(screen->display, screen->window, 0, NULL); // DefaultGC(screen->dpy, screen_num);
     /* change the foreground color of this GC to white. */
@@ -282,80 +289,47 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             screen->vis->red_mask, screen->vis->green_mask, screen->vis->blue_mask,
             screen->bytespp, screen->depth / BITS_PER_BYTE, NULL);
 
-    screen->pointer_hidden = false;
-    screen->pointer_grabbed = false;
-
-    screen->FS.modeChanged = false;
-    update_window_size(screen);
-
-    if (screen->fullscreen) {
-        enter_fullscreen(screen);
-    } else {
-        center_window(screen); // Make sure the window is mapped before using this
-
-//        XWindowAttributes xwa;
-//        XGetWindowAttributes(screen->display, screen->window, &xwa);
-//        printf("%d %d\n", xwa.x, xwa.y);
-
-//        Window child;
-//        int x = -1, y = -1;
-//        XTranslateCoordinates(screen->display, screen->window, screen->root,
-//                screen->width/2,
-//                screen->height/2,
-//                &x, &y, &child);
-//        printf("%d %d\n", x, y);
-////        XFlush(screen->display);
-//        XWarpPointer(screen->display, None, screen->root, 0,0,0,0, x, y );
-//        XFlush(screen->display);
-
-        //        set_mouse_cursor_pos(screen, x, y);
-//        int x, y;
-//        Window child;
-//        XWindowAttributes xwa;
-//        int xtres = XTranslateCoordinates( screen->display, screen->window, screen->root, 100, 200, &x, &y, &child );
-//        XGetWindowAttributes( screen->display, screen->window, &xwa );
-//        printf( "%d %d - %d\n", x - xwa.x, y - xwa.y, xtres);
-//
-//        XWarpPointer(screen->display, None, screen->window, 0,0,0,0, 200, 100);
-    }
-
-    // Process the window map event and any other that may have arrived
-    poll_events_screen(screen);
-
-    init_screen_buffer(screen);
-
-    // Clear GLFW window state
+    // Clear window state
     screen->active         = true;
     screen->iconified      = false;
     screen->mouseLock      = true;
 //    screen->autoPollEvents = true; // not used
     clear_input(screen);
 
-    // Retrieve and set initial cursor position
-    {
-        Window window, root;
-        int windowX, windowY, rootX, rootY;
-        unsigned int mask;
-
-        XQueryPointer(screen->display,
-                      screen->window,
-                      &root,
-                      &window,
-                      &rootX, &rootY,  /* Screen coords relative to root window's top-left */
-                      &windowX, &windowY, /* Client coords relative to window's top-left */
-                      &mask );
-
-        // TODO: Probably check for some corner cases here.
-
-        screen->input.mousePosX = windowX;
-        screen->input.mousePosY = windowY;
-    }
-
     screen->key_callback = NULL;
     screen->window_close_callback = NULL;
     screen->char_callback = NULL;
+    screen->mouse_pos_callback = NULL;
 
-    // for testing...
+    screen->pointer_hidden = false;
+    screen->pointer_grabbed = false;
+
+    screen->FS.modeChanged = false;
+    update_window_size(screen);
+
+    center_window(screen); // Make sure the window is mapped before using this
+    center_mouse(screen);
+    print_coord_root(screen);
+
+    if (screen->fullscreen) {
+        enter_fullscreen(screen);
+        print_coord_root(screen);
+//        int windowX, windowY;
+//        get_cursor_pos(screen, &windowX, &windowY);
+    } else {
+//        center_window(screen); // Make sure the window is mapped before using this
+//        center_mouse(screen);
+    }
+
+    // Process the window map event and any other that may have arrived
+    poll_events_screen(screen);
+
+    // Retrieve and set initial cursor position
+    init_cursor_pos(screen);
+
+    init_screen_buffer(screen);
+
+//     for testing...
 //    struct timespec sleep_time_s = {2, 0 };
 //    nanosleep(&sleep_time_s, NULL);
 //    exit(1);
@@ -363,12 +337,41 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     return screen;
 }
 
+void init_cursor_pos(screen_x11_t *screen) {
+
+    int windowX, windowY;
+    get_cursor_pos(screen, &windowX, &windowY);
+    // TODO: Probably check for some corner cases here.
+    screen->input.mousePosX = windowX;
+    screen->input.mousePosY = windowY;
+}
+
+static void get_cursor_pos(screen_x11_t *screen, int *windowX, int *windowY) {
+    Window window, root;
+    int rootX, rootY;
+    unsigned int mask;
+
+    XQueryPointer(screen->display,
+                  screen->window,
+                  &root,
+                  &window,
+                  &rootX, &rootY,  /* Screen coords relative to root window's top-left */
+                  windowX, windowY, /* Client coords relative to window's top-left */
+                  &mask);
+
+//    flush_printf("Root_: %d Win_: %d", root, window);
+    flush_printf("Cursor:[R:%d,%d][Win:%d,%d]\n", rootX, rootY, *windowX, *windowY);
+}
+
 void center_window(screen_x11_t *screen) {
+    // TODO ...
     int display_width = XDisplayWidth(screen->display, screen->screen_idx) / 2; // TODO fix /2 ?? pare che la width comprenda entrambi i monitor...
     int display_height = XDisplayHeight(screen->display, screen->screen_idx);
     int x = (display_width - screen->width) / 2;
     int y = (display_height - screen->height) / 2;
+    XReparentWindow(screen->display, screen->window, screen->root, x, y);
     set_window_pos(screen, x, y); // da chiamare dopo XMapWindow
+    XSync(screen->display, False);
 }
 
 void set_key_callback_screen(screen_t *screen, fun_key_t key_fun) {
@@ -434,13 +437,17 @@ void poll_events_screen(screen_x11_t *screen) {
 
     // Did we get mouse movement in fully enabled hidden cursor mode?
     if(screen->input.MouseMoved && screen->pointer_hidden) {
-
+//    if(screen->fullscreen) {
+//        int windowX, windowY;
+//        get_cursor_pos(screen, &windowX, &windowY);
+//        flush_printf("recentering mouse...\n");
+        set_mouse_cursor_pos(screen, 0, 0);
         center_mouse(screen);
-
+        XSync(screen->display, False);
         // NOTE: This is a temporary fix.  It works as long as you use offsets
         //       accumulated over the course of a frame, instead of performing
         //       the necessary actions per callback call.
-        XFlush(screen->display);
+//        XFlush(screen->display);
     }
 
     if(close_requested && screen->window_close_callback) {
@@ -450,12 +457,27 @@ void poll_events_screen(screen_x11_t *screen) {
     if(close_requested) {
         terminate_screen(screen);
     }
-
 }
 
-void move_mouse_root_win(const screen_x11_t *screen) {
+//========================================================================
+// Wait for new window and input events
+//========================================================================
+
+static void wait_events(screen_x11_t *screen)
+{
+    XEvent event;
+
+    // Block waiting for an event to arrive
+    XNextEvent(screen->display, &event );
+    XPutBackEvent(screen->display, &event );
+
+    poll_events_screen(screen);
+}
+
+
+static void move_mouse_root_win(screen_x11_t *screen) {
     Window child;
-    int x = -1, y = -1;
+    int x, y;
     XTranslateCoordinates(screen->display, screen->window, screen->root,
             screen->width/2,
             screen->height/2,
@@ -502,24 +524,57 @@ void blit_screen(screen_x11_t *screen) {
 
 void toggle_fullscreen_mode(screen_t *screen) {
     screen->fullscreen = !screen->fullscreen;
+//    int windowX, windowY;
+//    get_cursor_pos(screen, &windowX, &windowY);
+
+////    XWarpPointer(screen->display, None, screen->window, 0,0,0,0, screen->width/2, screen->height/2);
+////    XFlush(screen->display);
+//    center_mouse(screen);
+    flush_printf("toggling...\n");
+
+    print_coord_root(screen);
+
     if (screen->fullscreen) {
-        flush_printf("going fullscreen...\n");
-//        update_window_size(screen);
-//        enter_fullscreen(screen);
+//        flush_printf("going fullscreen...\n");
+        update_window_size(screen);
+        enter_fullscreen(screen);
+        print_coord_root(screen);
+//        set_mouse_cursor_pos()
+        int windowX, windowY;
+        get_cursor_pos(screen, &windowX, &windowY);
+        //        center_mouse(screen);
     } else {
-        flush_printf("going windowed...\n");
-//        leave_fullscreen(screen);
-//        update_window_size(screen);
-//        center_window(screen);
-//        center_mouse(screen);
+//        flush_printf("going windowed...\n");
+        leave_fullscreen(screen);
+        update_window_size(screen);
+        center_window(screen);
+        center_mouse(screen);
     }
-    // Process the window map event and any other that may have arrived
+
     poll_events_screen(screen);
+
+//    int windowX, windowY;
+//    get_cursor_pos(screen, &windowX, &windowY);
+}
+
+void print_coord_root(screen_t *screen) {
+    Window child;
+    int x, y;
+    XTranslateCoordinates(screen->display, screen->window, screen->root,
+                          0,
+                          0,
+                          &x, &y, &child);
+    printf("Origine win in RootW: %d %d\n", x, y);
 }
 
 /**************************************************************************************/
 // PRIVATE FUNCTIONS
 /**************************************************************************************/
+
+static void wait_ms(int ms) {
+    struct timespec sleep_time_s = { 0, NANO_IN_MILLI*ms };
+    nanosleep(&sleep_time_s, NULL);
+}
 
 static void init_screen_buffer(screen_x11_t *screen) {
     screen->ximg = create_image(screen);
@@ -615,8 +670,11 @@ static void enter_fullscreen(screen_x11_t *screen) {
             event.xclient.data.l[0] = 1; // Sender is a normal application
             event.xclient.data.l[1] = 0; // We don't really know the timestamp
 
+            flush_printf("active win\n");
+
             XSendEvent(screen->display,
                        screen->root,
+//                       DefaultRootWindow(screen->display),
                        False,
                        SubstructureNotifyMask | SubstructureRedirectMask,
                        &event);
@@ -636,6 +694,7 @@ static void enter_fullscreen(screen_x11_t *screen) {
         //    enterFullscreenMode
         XSendEvent(screen->display,
                    screen->root,
+//                   DefaultRootWindow(screen->display),
                    False,
                    SubstructureNotifyMask | SubstructureRedirectMask,
                    &event);
@@ -652,7 +711,10 @@ static void enter_fullscreen(screen_x11_t *screen) {
                       screen->width, screen->height );
     }
 
-    if(screen->mouseLock ) {
+//    XMoveWindow(screen->display, screen->window, 0, 0);
+
+    XSync(screen->display, False);
+    if (screen->mouseLock) {
         hide_mouse_cursor(screen);
     }
 
@@ -661,14 +723,13 @@ static void enter_fullscreen(screen_x11_t *screen) {
     // This hack should be harmless on saner systems as well
     set_mouse_cursor_pos(screen, 0, 0);
     center_mouse(screen);
-    XFlush(screen->display);
+
+    print_window_attr(screen);
 }
 
 static void leave_fullscreen(screen_x11_t *screen) {
 
     restore_video_mode(screen);
-
-    screen->FS.modeChanged = false;
 
     // Ask the window manager to make the GLFW window a normal window
     // Normal windows usually have frames and other decorations
@@ -788,8 +849,8 @@ static void update_window_size(screen_x11_t *screen)
         XResizeWindow(screen->display, screen->window, width, height);
     }
 
-    XRaiseWindow(screen->display, screen->window);
-    XFlush(screen->display);
+//    XRaiseWindow(screen->display, screen->window);
+    XSync(screen->display, False);
 }
 
 // https://stackoverflow.com/questions/12706631/x11-change-resolution-and-make-window-fullscreen
@@ -909,13 +970,18 @@ static Atom getSupportedAtom(screen_x11_t *screen_x11, Atom *supportedAtoms, uns
 }
 
 static void restore_video_mode(screen_x11_t *screen) {
-    // Unlock mode switch
-    XF86VidModeLockModeSwitch(screen->display, screen->screen_idx, 0 );
 
-    // Change the video mode back to the old mode
-    XF86VidModeSwitchToMode( screen->display,
-                             screen->screen_idx,
-                             &screen->FS.oldMode );
+    if (screen->FS.modeChanged) {
+        // Unlock mode switch
+        XF86VidModeLockModeSwitch(screen->display, screen->screen_idx, 0);
+
+        // Change the video mode back to the old mode
+        XF86VidModeSwitchToMode(screen->display,
+                                screen->screen_idx,
+                                &screen->FS.oldMode);
+
+        screen->FS.modeChanged = false;
+    }
 }
 
 //========================================================================
@@ -970,7 +1036,7 @@ static void hide_mouse_cursor(screen_x11_t *screen) {
     // Hide cursor
     if (!screen->pointer_hidden) {
         // comment these 2 lines to not hide the cursor
-        XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
+//        XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
         screen->pointer_hidden = True;
     }
     grab_mouse(screen);
@@ -985,9 +1051,9 @@ static void grab_mouse(screen_x11_t *screen) {// Grab cursor to user window
                                     screen->window, None, CurrentTime);
         if(grab_res == GrabSuccess ) {
             screen->pointer_grabbed = True;
-            printf("pointer grabbed\n");
+            flush_printf("pointer grabbed\n");
         } else {
-            printf("X server refused mouse capture\n");
+            flush_printf("X server refused mouse capture\n");
         }
     }
 }
@@ -1104,6 +1170,13 @@ static void set_window_pos(screen_x11_t *screen, int x, int y ) {
     XFlush(screen->display);
 }
 
+static void print_window_attr(screen_x11_t *screen) {
+    XWindowAttributes attr;
+    XGetWindowAttributes(screen->display, screen->window, &attr);
+    flush_printf("Win:[x:%d,y:%d,w:%d,h:%d]\n", attr.x, attr.y, attr.width, attr.height);
+}
+
+
 //{
 //int keysyms_per_keycode_return;
 //KeySym *keysym = XGetKeyboardMapping(dpy,
@@ -1173,6 +1246,42 @@ static bool process_single_event(screen_x11_t *screen) {
             break;
         }
 
+        case MotionNotify:
+        {
+            // The mouse cursor was moved
+
+            if( event.xmotion.x != screen->input.CursorPosX ||
+                event.xmotion.y != screen->input.CursorPosY )
+            {
+                // The mouse cursor was moved and we didn't do it
+
+                if( screen->mouseLock )
+                {
+                    if( screen->pointer_hidden)
+                    {
+                        screen->input.mousePosX += event.xmotion.x -
+                                                screen->input.CursorPosX;
+                        screen->input.mousePosY += event.xmotion.y -
+                                                screen->input.CursorPosY;
+                    }
+                }
+                else
+                {
+                    screen->input.mousePosX = event.xmotion.x;
+                    screen->input.mousePosY = event.xmotion.y;
+                }
+
+                screen->input.CursorPosX = event.xmotion.x;
+                screen->input.CursorPosY = event.xmotion.y;
+                screen->input.MouseMoved = true;
+
+                if( screen->mouse_pos_callback )
+                {
+                    screen->mouse_pos_callback(screen->input.mousePosX, screen->input.mousePosY);
+                }
+            }
+            break;
+        }
 
 
         default:
@@ -1440,7 +1549,7 @@ static int translateKey(screen_x11_t *screen, int keycode) {
 static void flush_printf(const char *format, ...) {
     va_list arg;
     va_start (arg, format);
-    printf(format, arg);
+    vprintf(format, arg);
     va_end (arg);
     fflush(stdout);
 }

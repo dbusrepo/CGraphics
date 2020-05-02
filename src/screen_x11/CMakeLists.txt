@@ -38,5 +38,6 @@ target_link_libraries(screen_x11
         Xext
         Xt
         Xxf86vm
+        #Xrandr
         #        graphics_utils
         )
