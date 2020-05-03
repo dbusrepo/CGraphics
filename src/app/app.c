@@ -93,7 +93,6 @@ void run_app(app_t *app,
     int64_t excess = 0;
     int64_t period = app->period; // save it here
 
-
     app->update_callback = update_fun;
     app->render_callback = render_fun;
 

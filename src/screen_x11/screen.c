@@ -29,6 +29,8 @@
 
 typedef struct screen screen_x11_t;
 
+uint64_t screen_start_time;
+
 struct screen {
     // callback functions ??
     fun_key_t key_callback;    // see glfw.h for other callbacks (and remember to init them!)
@@ -162,11 +164,17 @@ static void move_mouse_root_win(screen_x11_t *screen); // TODO use?
 
 void print_coord_root(screen_t *screen);
 
+void set_override_redirect(screen_x11_t *screen);
+
+void init_window(screen_x11_t *screen);
+
 // ...
 // TODO see createWindow e _glfwPlatformOpenWindow in glfw/lib/x11/x11_window.c
 // e anche glfwOpenWindow in window.c (generico, no x11)
 // _glfwPlatformCloseWindow
 screen_x11_t *init_screen(screen_settings_t *screen_settings) {
+
+    screen_start_time = nano_time();
 
     screen_x11_t *screen = malloc(sizeof(screen_x11_t));
     memset(screen, 0, sizeof(screen_x11_t));
@@ -206,47 +214,43 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 
     screen->screen_idx = DefaultScreen(screen->display);
     screen->vis = DefaultVisual(screen->display, screen->screen_idx);
-    screen->root = DefaultRootWindow(screen->display);//RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
-    screen->window = XCreateWindow(screen->display,                // display
-                                   screen->root,     // parent
-                                   0, 0,                   // x, y position, remapped later set_window_with set_window_pos
-                                   screen->width, // width
-                                   screen->height, // height
-                                   0,                          // border width
-                                   (int32_t) screen->depth,          // default_depth (we use max. possible)
-                                   CopyFromParent,             // visual class (TrueColor etc)
-                                   screen->vis,            // visual
-                                   0, NULL);                   // valuemask, window attributes
-
-    init_atoms(screen); // requires the root... // TODO
+    init_window(screen);
+    set_window_title(screen, screen_settings->window_title);
 
     // Check whether an EWMH-compliant window manager is running
-    screen->hasEWMH = check_for_EWMH(screen);
-    screen->overrideRedirect = false;
-    if(screen->fullscreen && !screen->hasEWMH ) {
-        // This is the butcher's way of removing window decorations
-        // Setting the override-redirect attribute on a window makes the window
-        // manager ignore the window completely (ICCCM, section 4)
-        // The good thing is that this makes undecorated fullscreen windows
-        // easy to do; the bad thing is that we have to do everything manually
-        // and some things (like iconify/restore) won't work at all, as they're
-        // usually performed by the window manager
+//    screen->hasEWMH = check_for_EWMH(screen);
+//    screen->overrideRedirect = false;
+//    if(screen->fullscreen && !screen->hasEWMH ) {
+//        // This is the butcher's way of removing window decorations
+//        // Setting the override-redirect attribute on a window makes the window
+//        // manager ignore the window completely (ICCCM, section 4)
+//        // The good thing is that this makes undecorated fullscreen windows
+//        // easy to do; the bad thing is that we have to do everything manually
+//        // and some things (like iconify/restore) won't work at all, as they're
+//        // usually performed by the window manager
+//
+//        XSetWindowAttributes attributes;
+//        attributes.override_redirect = True;
+//        XChangeWindowAttributes(screen->display,
+//                                screen->window,
+//                                CWOverrideRedirect,
+//                                &attributes );
+//
+//        screen->overrideRedirect = true;
+//    }
 
-        XSetWindowAttributes attributes;
-        attributes.override_redirect = True;
-        XChangeWindowAttributes(screen->display,
-                                screen->window,
-                                CWOverrideRedirect,
-                                &attributes );
+//    XSetWindowAttributes attributes;
+//    attributes.override_redirect = True;
+//    XChangeWindowAttributes(screen->display,
+//                            screen->window,
+//                            CWOverrideRedirect,
+//                            &attributes );
+//    screen->overrideRedirect = true;
 
-        screen->overrideRedirect = true;
-    }
+    // ---
 
     // Create the invisible cursor for hidden cursor mode
     screen->cursor = create_null_cursor(screen->display, screen->root );
-    set_window_title(screen, screen_settings->window_title);
-
-    XMapWindow(screen->display, screen->window);
 
     switch (screen->vis->class) {
         // constants for visual classes are defined in /usr/include/X11/X.h
@@ -281,13 +285,6 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
             exit(EXIT_FAILURE);
     }
 
-    XSelectInput(screen->display, screen->window, (FocusChangeMask | EnterWindowMask | LeaveWindowMask |
-                                                   ExposureMask | ButtonPressMask | ButtonReleaseMask |
-                                                   PointerMotionMask | KeyPressMask | KeyReleaseMask |
-                                                   PropertyChangeMask | StructureNotifyMask |
-                                                   KeymapStateMask));
-
-    screen->gc = XCreateGC(screen->display, screen->window, 0, NULL); // DefaultGC(screen->dpy, screen_num);
     /* change the foreground color of this GC to white. */
     XSetForeground(screen->display, screen->gc, WhitePixel(screen->display, screen->screen_idx));
 
@@ -315,18 +312,48 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     screen->pointer_grabbed = false;
 
     screen->FS.modeChanged = false;
+
     update_window_size(screen);
 
-    center_window(screen); // Make sure the window is mapped before using this
-    center_mouse(screen);
-    print_coord_root(screen);
+    // going full screen...
+//    XEvent xev;
+//    Atom wm_state = XInternAtom(screen->display, "_NET_WM_STATE", False);
+//    Atom fullscreen = XInternAtom(screen->display, "_NET_WM_STATE_FULLSCREEN", False);
+//    memset(&xev, 0, sizeof(xev));
+//    xev.type = ClientMessage;
+//    xev.xclient.window = screen->window;
+//    xev.xclient.message_type = wm_state;
+//    xev.xclient.format = 32;
+//    xev.xclient.data.l[0] = 1; // _NET_WM_STATE_ADD
+//    xev.xclient.data.l[1] = fullscreen;
+//    xev.xclient.data.l[2] = 0;
+//    XSendEvent(screen->display, DefaultRootWindow(screen->display), False,
+//               SubstructureNotifyMask | SubstructureRedirectMask, &xev);
 
+    set_override_redirect(screen);
+    XMapWindow(screen->display, screen->window);
+
+//    struct timespec sleep_time_s2 = { 2, 0 };
+//    nanosleep(&sleep_time_s2, NULL);
+
+//        XWithdrawWindow(screen->display, screen->window, screen->screen_idx);
     if (screen->fullscreen) {
+//        XSetWindowAttributes attributes;
+//        attributes.override_redirect = True;
+//        XChangeWindowAttributes(screen->display,
+//                                screen->window,
+//                                CWOverrideRedirect,
+//                                &attributes );
+//        screen->overrideRedirect = true;
         enter_fullscreen(screen);
-        print_coord_root(screen);
 //        int windowX, windowY;
 //        get_cursor_pos(screen, &windowX, &windowY);
+    } else {
+        center_window(screen); // Make sure the window is mapped before using this
     }
+
+//    print_coord_root(screen);
+    center_mouse(screen);
 
     // Process the window map event and any other that may have arrived
     poll_events_screen(screen);
@@ -334,6 +361,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     // Retrieve and set initial cursor position
     init_cursor_pos(screen);
 
+    /************************************************/
     init_screen_buffer(screen);
 
 //    //for testing...
@@ -344,8 +372,41 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     return screen;
 }
 
-void init_cursor_pos(screen_x11_t *screen) {
+void init_window(screen_x11_t *screen) {
+    screen->root = RootWindow(screen->display, screen->screen_idx ); // DefaultRootWindow(screen->display);
+    screen->window = XCreateWindow(screen->display,                // display
+                                   screen->root,     // parent
+                                   0, 0,                   // x, y position, remapped later set_window_with set_window_pos
+                                   screen->width, // width
+                                   screen->height, // height
+                                   0,                          // border width
+                                   (int32_t) screen->depth,          // default_depth (we use max. possible)
+                                   CopyFromParent,             // visual class (TrueColor etc)
+                                   screen->vis,            // visual
+                                   0, NULL);                   // valuemask, window attributes
 
+    XSelectInput(screen->display, screen->window, (FocusChangeMask | EnterWindowMask | LeaveWindowMask |
+                                                   ExposureMask | ButtonPressMask | ButtonReleaseMask |
+                                                   PointerMotionMask | KeyPressMask | KeyReleaseMask |
+                                                   PropertyChangeMask | StructureNotifyMask |
+                                                   KeymapStateMask));
+    screen->gc = XCreateGC(screen->display, screen->window, 0, NULL); // DefaultGC(screen->dpy, screen_num);
+
+    init_atoms(screen); // requires the root... // TODO
+}
+
+void set_override_redirect(screen_x11_t *screen) {
+    screen->overrideRedirect = screen->fullscreen;
+    XSetWindowAttributes attributes;
+    attributes.override_redirect = screen->overrideRedirect;
+    XChangeWindowAttributes(screen->display,
+                            screen->window,
+                            CWOverrideRedirect,
+                            &attributes);
+    XSync(screen->display, False);
+}
+
+void init_cursor_pos(screen_x11_t *screen) {
     int windowX, windowY;
     get_cursor_pos(screen, &windowX, &windowY);
     // TODO: Probably check for some corner cases here.
@@ -465,10 +526,17 @@ void terminate_screen(screen_x11_t *screen) {
 
     XFlush(screen->display);
     XCloseDisplay(screen->display);
-    memset(screen, 0, sizeof(screen_x11_t));
+//    memset(screen, 0, sizeof(screen_x11_t));
 }
 
 void poll_events_screen(screen_x11_t *screen) {
+
+    uint64_t delta = nano_time() - screen_start_time;
+    uint64_t limit = (NANO_IN_SEC * 25);
+//    flush_printf("delta: %lu, limit: %lu\n", delta, limit);
+    if (delta > limit) {
+        exit(1);
+    }
 
     bool close_requested = false;
 
@@ -476,21 +544,24 @@ void poll_events_screen(screen_x11_t *screen) {
     screen->input.MouseMoved = false;
 
     // Process all pending events
-    while(XPending(screen->display )) {
+    while(XPending(screen->display)) {
         if(process_single_event(screen)) {
             close_requested = true;
         }
     }
 
+//    flush_printf("is fullscreen...%d\nis pointer hidden...%d\n", screen->fullscreen, screen->pointer_hidden);
     // Did we get mouse movement in fully enabled hidden cursor mode?
-    if(screen->input.MouseMoved && (screen->fullscreen && screen->pointer_hidden)) {
+//    if(screen->input.MouseMoved && (screen->fullscreen && screen->pointer_hidden)) {
+
+    if(screen->fullscreen && screen->pointer_hidden) {
 //    if(screen->fullscreen) {
 //        int windowX, windowY;
 //        get_cursor_pos(screen, &windowX, &windowY);
 //        flush_printf("recentering mouse...\n");
 
 //        set_mouse_cursor_pos(screen, 0, 0);
-        center_mouse(screen);
+//        center_mouse(screen);
         XSync(screen->display, False);
 
         // NOTE: This is a temporary fix.  It works as long as you use offsets
@@ -567,6 +638,15 @@ void blit_screen(screen_x11_t *screen) {
     XSync(screen->display, False);
 }
 
+static Bool isMapNotify(Display *dpy, XEvent *ev, XPointer win)
+{
+    return ev->type == MapNotify && ev->xmap.window == *((Window*)win);
+}
+static Bool isUnmapNotify(Display *dpy, XEvent *ev, XPointer win)
+{
+    return ev->type == UnmapNotify && ev->xunmap.window == *((Window*)win);
+}
+
 void toggle_fullscreen_mode(screen_t *screen) {
     screen->fullscreen = !screen->fullscreen;
 //    int windowX, windowY;
@@ -577,24 +657,63 @@ void toggle_fullscreen_mode(screen_t *screen) {
 //    center_mouse(screen);
     flush_printf("toggling...\n");
 
-    print_coord_root(screen);
+//    print_coord_root(screen);
+
+
+//    XWithdrawWindow(screen->display, screen->window, screen->screen_idx);
+    XUnmapWindow(screen->display, screen->window);
+    XDestroyWindow(screen->display, screen->window);
+    init_window(screen);
+    clear_input(screen);
+    screen->pointer_hidden = false;
+    screen->pointer_grabbed = false;
+    XSync(screen->display, False);
 
     if (screen->fullscreen) {
-//        flush_printf("going fullscreen...\n");
+//        XUnmapWindow(screen->display, screen->window);
         update_window_size(screen);
+        set_override_redirect(screen);
+        XMapWindow(screen->display, screen->window);
         enter_fullscreen(screen);
-        print_coord_root(screen);
-//        set_mouse_cursor_pos()
-        int windowX, windowY;
-        get_cursor_pos(screen, &windowX, &windowY);
+        XSync(screen->display, False);
+//        XReparentWindow(screen->display, screen->window, DefaultRootWindow(screen->display), 0, 0);
+
+//        XSync(screen->display, False);
+        center_mouse(screen);
+        // Retrieve and set initial cursor position
+        init_cursor_pos(screen);
+
+
+
+        //        XUnmapWindow(screen->display, screen->window);
+//        XMapWindow(screen->display, screen->window);
+
+//        set_override_redirect(screen);
+
+//        set_window_pos(screen, 0, 0);
+
+        //        set_window_pos(screen, 0, 0);
+//        XWithdrawWindow(screen->display, screen->window, screen->screen_idx);
+//        XUnmapWindow(screen->display, screen->window);
+//        XMapWindow(screen->display, screen->window);
+        //        flush_printf("going fullscreen...\n");
+
+//        print_coord_root(screen);
+////        set_mouse_cursor_pos()
+//        int windowX, windowY;
+//        get_cursor_pos(screen, &windowX, &windowY);
         //        center_mouse(screen);
     } else {
 //        flush_printf("going windowed...\n");
         leave_fullscreen(screen);
+        set_override_redirect(screen);
+        XMapWindow(screen->display, screen->window);
         update_window_size(screen);
         center_window(screen);
         center_mouse(screen);
     }
+
+    XSync(screen->display, False);
 
     poll_events_screen(screen);
 
@@ -702,68 +821,81 @@ static void enter_fullscreen(screen_x11_t *screen) {
 
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
 
-    if(screen->hasEWMH &&
-       screen->wmState != None &&
-       screen->wmStateFullscreen != None ) {
-
-        if (screen->wmActiveWindow != None) {
-            // Ask the window manager to raise and focus the GLFW window
-            // Only focused windows with the _NET_WM_STATE_FULLSCREEN state end
-            // up on top of all other windows ("Stacking order" in EWMH spec)
-
-            XEvent event = {0};
-
-            event.type = ClientMessage;
-            event.xclient.window = screen->window;
-            event.xclient.format = 32; // Data is 32-bit longs
-            event.xclient.message_type = screen->wmActiveWindow;
-            event.xclient.data.l[0] = 1; // Sender is a normal application
-            event.xclient.data.l[1] = 0; // We don't really know the timestamp
-
-            flush_printf("active win\n");
-
-            XSendEvent(screen->display,
-                       screen->root,
-//                       DefaultRootWindow(screen->display),
-                       False,
-                       SubstructureNotifyMask | SubstructureRedirectMask,
-                       &event);
-        }
-
-        XEvent event = {0};
-
-        event.type = ClientMessage;
-        event.xclient.window = screen->window;
-        event.xclient.format = 32; // Data is 32-bit longs
-        event.xclient.message_type = screen->wmState;
-        event.xclient.data.l[0] = _NET_WM_STATE_ADD;
-        event.xclient.data.l[1] = screen->wmStateFullscreen;
-        event.xclient.data.l[2] = 0; // No secondary property
-        event.xclient.data.l[3] = 1; // Sender is a normal application // TODO try 0l as in sdl?
-
-        //    enterFullscreenMode
-        XSendEvent(screen->display,
-                   screen->root,
-//                   DefaultRootWindow(screen->display),
-                   False,
-                   SubstructureNotifyMask | SubstructureRedirectMask,
-                   &event);
-
-    } else if(screen->overrideRedirect )
-    {
-        // In override-redirect mode, we have divorced ourselves from the
-        // window manager, so we need to do everything manually
-        XRaiseWindow(screen->display, screen->window );
-        XSetInputFocus(screen->display, screen->window,
-                       RevertToParent, CurrentTime );
-        XMoveWindow(screen->display, screen->window, 0, 0 );
-        XResizeWindow(screen->display, screen->window,
-                      screen->width, screen->height );
-    }
-
-//    XMoveWindow(screen->display, screen->window, 0, 0);
+    XRaiseWindow(screen->display, screen->window );
+//    XSetInputFocus(screen->display, screen->window,
+//                   RevertToParent, CurrentTime );
+    XSetInputFocus(screen->display, screen->window,
+                   RevertToNone, CurrentTime );
+    XMoveWindow(screen->display, screen->window, 0, 0 );
+    XResizeWindow(screen->display, screen->window,
+                  screen->width, screen->height );
 
     XSync(screen->display, False);
+
+    //    /* no WM means no FocusIn event, which confuses us. Force it. */
+//    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
+//    XFlush(screen->display);
+
+    //    if(screen->hasEWMH &&
+//       screen->wmState != None &&
+//       screen->wmStateFullscreen != None ) {
+//
+////        if (screen->wmActiveWindow != None) {
+////            // Ask the window manager to raise and focus the GLFW window
+////            // Only focused windows with the _NET_WM_STATE_FULLSCREEN state end
+////            // up on top of all other windows ("Stacking order" in EWMH spec)
+////
+////            XEvent event = {0};
+////
+////            event.type = ClientMessage;
+////            event.xclient.window = screen->window;
+////            event.xclient.format = 32; // Data is 32-bit longs
+////            event.xclient.message_type = screen->wmActiveWindow;
+////            event.xclient.data.l[0] = 1; // Sender is a normal application
+////            event.xclient.data.l[1] = 0; // We don't really know the timestamp
+////
+////            flush_printf("active win\n");
+////
+////            XSendEvent(screen->display,
+////                       screen->root,
+//////                       DefaultRootWindow(screen->display),
+////                       False,
+////                       SubstructureNotifyMask | SubstructureRedirectMask,
+////                       &event);
+////        }
+//
+//        XEvent event = {0};
+//
+//        event.type = ClientMessage;
+//        event.xclient.window = screen->window;
+//        event.xclient.format = 32; // Data is 32-bit longs
+//        event.xclient.message_type = screen->wmState;
+//        event.xclient.data.l[0] = _NET_WM_STATE_ADD;
+//        event.xclient.data.l[1] = screen->wmStateFullscreen;
+//        event.xclient.data.l[2] = 0; // No secondary property
+//        event.xclient.data.l[3] = 1; // Sender is a normal application // TODO try 0l as in sdl?
+//
+//        //    enterFullscreenMode
+//        XSendEvent(screen->display,
+//                   screen->root,
+////                   DefaultRootWindow(screen->display),
+//                   False,
+//                   SubstructureNotifyMask | SubstructureRedirectMask,
+//                   &event);
+//
+//    } else if(screen->overrideRedirect )
+//    {
+//        // In override-redirect mode, we have divorced ourselves from the
+//        // window manager, so we need to do everything manually
+//        XRaiseWindow(screen->display, screen->window );
+//        XSetInputFocus(screen->display, screen->window,
+//                       RevertToParent, CurrentTime );
+//        XMoveWindow(screen->display, screen->window, 0, 0 );
+//        XResizeWindow(screen->display, screen->window,
+//                      screen->width, screen->height );
+//    }
+
+//    XMoveWindow(screen->display, screen->window, 0, 0);
 
     if (screen->mouseLock) {
         hide_mouse_cursor(screen);
@@ -775,6 +907,16 @@ static void enter_fullscreen(screen_x11_t *screen) {
     set_mouse_cursor_pos(screen, 0, 0);
     center_mouse(screen);
 
+    XSync(screen->display, False);
+
+    {
+        XEvent ev;
+        /* Wait to be mapped, filter Unmap event out if it arrives. */
+        XIfEvent(screen->display, &ev, &isMapNotify, (XPointer)&screen->window);
+        XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer)&screen->window);
+    }
+
+    flush_printf("fullscreen: ");
     print_window_attr(screen);
 }
 
@@ -782,24 +924,24 @@ static void leave_fullscreen(screen_x11_t *screen) {
 
     restore_video_mode(screen);
 
-    // Ask the window manager to make the GLFW window a normal window
-    // Normal windows usually have frames and other decorations
-    XEvent event = { 0 };
-
-    event.type = ClientMessage;
-    event.xclient.window = screen->window;
-    event.xclient.format = 32; // Data is 32-bit longs
-    event.xclient.message_type = screen->wmState;
-    event.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
-    event.xclient.data.l[1] = screen->wmStateFullscreen;
-    event.xclient.data.l[2] = 0; // No secondary property
-    event.xclient.data.l[3] = 1; // Sender is a normal application
-
-    XSendEvent(screen->display,
-               screen->root,
-               False,
-               SubstructureNotifyMask | SubstructureRedirectMask,
-               &event);
+//    // Ask the window manager to make the GLFW window a normal window
+//    // Normal windows usually have frames and other decorations
+//    XEvent event = { 0 };
+//
+//    event.type = ClientMessage;
+//    event.xclient.window = screen->window;
+//    event.xclient.format = 32; // Data is 32-bit longs
+//    event.xclient.message_type = screen->wmState;
+//    event.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
+//    event.xclient.data.l[1] = screen->wmStateFullscreen;
+//    event.xclient.data.l[2] = 0; // No secondary property
+//    event.xclient.data.l[3] = 1; // Sender is a normal application
+//
+//    XSendEvent(screen->display,
+//               screen->root,
+//               False,
+//               SubstructureNotifyMask | SubstructureRedirectMask,
+//               &event);
 
     if (screen->mouseLock) {
         show_mouse_cursor(screen);
@@ -874,8 +1016,8 @@ static void update_window_size(screen_x11_t *screen)
     int height = screen->height;
 
     screen->mouseLock      = false;
-
-    if(screen->fullscreen ) {
+//    screen->mouseLock = true;
+    if  (screen->fullscreen) {
         screen->mouseLock      = true;
         // Get the closest matching video mode for the specified window size
         mode = find_best_video_mode(screen, &width, &height);
@@ -895,7 +1037,7 @@ static void update_window_size(screen_x11_t *screen)
 
     if (screen->fullscreen) {
         // Change video mode, keeping current refresh rate
-//        change_video_mode(screen, mode); // TODO decomment
+        change_video_mode(screen, mode); // TODO decomment
     }
 
     // Set window size (if not already changed)
@@ -1090,8 +1232,9 @@ static void hide_mouse_cursor(screen_x11_t *screen) {
     // Hide cursor
     if (!screen->pointer_hidden) {
         // comment these 2 lines to not hide the cursor
-//        XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
-        screen->pointer_hidden = True;
+        XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
+        screen->pointer_hidden = true;
+        flush_printf("pointer hidden\n");
     }
     grab_mouse(screen);
     center_mouse(screen); // Move cursor to the middle of the window
@@ -1251,7 +1394,7 @@ static bool process_single_event(screen_x11_t *screen) {
     // if or while?
     switch (event.type) {
         case KeyPress: { // A keyboard key was pressed
-
+            flush_printf("key pressed...\n");
             // Translate and report key press
             input_key(screen, translate_key(screen, event.xkey.keycode), KEY_PRESS);
 
@@ -1422,17 +1565,25 @@ static bool process_single_event(screen_x11_t *screen) {
 
         case FocusIn:
         {
+            if (screen->fullscreen) break;
+
+            flush_printf("start FOCUS IN...\n");
+
             // The window gained focus
             screen->active = true;
 
-            if( screen->mouseLock )
-            {
+            if( screen->mouseLock ) {
                 hide_mouse_cursor(screen);
             }
+
+            flush_printf("end FOCUS IN...\n");
             break;
         }
 
         case FocusOut: {
+            if (screen->fullscreen) break;
+
+            flush_printf("start FOCUS OUT...\n");
             // The window lost focus
             screen->active = false;
             input_deactivation(screen);
@@ -1440,7 +1591,7 @@ static bool process_single_event(screen_x11_t *screen) {
             if (screen->mouseLock) {
                 show_mouse_cursor(screen);
             }
-
+            flush_printf("end FOCUS OUT...\n");
             break;
         }
 
