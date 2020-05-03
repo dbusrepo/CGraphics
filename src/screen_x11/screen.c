@@ -32,9 +32,13 @@ typedef struct screen screen_x11_t;
 struct screen {
     // callback functions ??
     fun_key_t key_callback;    // see glfw.h for other callbacks (and remember to init them!)
-    fun_close_t window_close_callback; // TODO aggiungere a app
+    fun_win_close_t win_close_callback; // TODO aggiungere a app
+    fun_win_size_t win_size_callback;
+    fun_win_refresh_t win_refresh_callback;
     fun_char_t char_callback;
     fun_mouse_pos_t mouse_pos_callback;
+    fun_mouse_button_t mouseButtonCallback;
+    fun_mouse_wheel_t mouseWheelCallback;
 
     // Window and framebuffer attributes
     bool no_resize;     // Resize- and maximize gadgets disabled flag
@@ -65,6 +69,7 @@ struct screen {
 //    int64_t event_mask;             // event checking mask // TODO not used anymore (?)
     Display *display;                     // X11: Display (connection to X server)
     Cursor cursor;                  // Invisible cursor for hidden cursor
+    Atom wmDeleteWindow;            // WM_DELETE_WINDOW atom
     Atom wmStateFullscreen;         // _NET_WM_STATE_FULLSCREEN atom
     Atom wmState;                   // _NET_WM_STATE atom
     bool pointer_hidden;
@@ -135,18 +140,19 @@ static void restore_video_mode(screen_x11_t *screen);
 static void update_window_size(screen_x11_t *screen);
 static void leave_fullscreen(screen_x11_t *screen);
 static void enter_fullscreen(screen_x11_t *screen);
-static void init_atom_support(screen_x11_t *screen_x11);
+static void init_atoms(screen_x11_t *screen_x11);
 static void show_mouse_cursor(screen_x11_t *screen);
 static bool process_single_event(screen_x11_t *screen);
 static void input_key(screen_x11_t *screen, int key, int action);
 static void input_char(screen_x11_t *screen, int character, int action);
 static void clear_input(screen_x11_t *screen);
 static void grab_mouse(screen_x11_t *screen);
-static int translateKey(screen_x11_t *screen, int keycode);
+static void input_mouse_click(screen_x11_t *screen, int button, int action);
+static int translate_key(screen_x11_t *screen, int keycode);
 static int translate_char(XKeyEvent *event);
 static void get_cursor_pos(screen_x11_t *screen, int *windowX, int *windowY); // get the pos wrt the window
 static void center_mouse(screen_x11_t *screen);
-
+static void input_deactivation(screen_x11_t *screen);
 static void print_window_attr(screen_x11_t *screen);
 static void wait_events(screen_x11_t *screen);
 static void wait_ms(int ms);
@@ -212,7 +218,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
                                    screen->vis,            // visual
                                    0, NULL);                   // valuemask, window attributes
 
-    init_atom_support(screen); // requires the root... // TODO
+    init_atoms(screen); // requires the root... // TODO
 
     // Check whether an EWMH-compliant window manager is running
     screen->hasEWMH = check_for_EWMH(screen);
@@ -297,9 +303,13 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     clear_input(screen);
 
     screen->key_callback = NULL;
-    screen->window_close_callback = NULL;
     screen->char_callback = NULL;
     screen->mouse_pos_callback = NULL;
+    screen->mouseButtonCallback = NULL;
+    screen->mouseWheelCallback = NULL;
+    screen->win_close_callback = NULL;
+    screen->win_size_callback = NULL;
+    screen->win_refresh_callback = NULL;
 
     screen->pointer_hidden = false;
     screen->pointer_grabbed = false;
@@ -374,8 +384,51 @@ void center_window(screen_x11_t *screen) {
     XSync(screen->display, False);
 }
 
-void set_key_callback_screen(screen_t *screen, fun_key_t key_fun) {
-    screen->key_callback = key_fun;
+void set_key_callback_screen(screen_t *screen, fun_key_t key_callback) {
+    screen->key_callback = key_callback;
+}
+
+void set_char_callback_screen(screen_t *screen, fun_char_t char_callback) {
+    screen->char_callback = char_callback;
+}
+
+void set_mouse_pos_callback_screen(screen_t *screen, fun_mouse_pos_t mouse_pos_callback) {
+    screen->mouse_pos_callback = mouse_pos_callback;
+    // Call the callback function to let the application know the current
+    // mouse position
+    if (mouse_pos_callback) {
+        mouse_pos_callback(screen->input.mousePosX, screen->input.mousePosY);
+    }
+}
+
+void set_mouse_button_callback_screen(screen_t *screen, fun_mouse_button_t mouse_button_callback) {
+    screen->mouseButtonCallback = mouse_button_callback;
+}
+
+void set_mouse_wheel_callback_screen(screen_t *screen, fun_mouse_wheel_t mouse_wheel_callback) {
+    screen->mouseWheelCallback = mouse_wheel_callback;
+    // Call the callback function to let the application know the current
+    // mouse wheel position
+    if (mouse_wheel_callback) {
+        mouse_wheel_callback(screen->input.wheelPos);
+    }
+}
+
+void set_win_size_callback_screen(screen_t *screen, fun_win_size_t win_size_callback) {
+    screen->win_size_callback = win_size_callback;
+    // Call the callback function to let the application know the current
+    // window size
+    if (win_size_callback) {
+        win_size_callback(screen->width, screen->height);
+    }
+}
+
+void set_win_close_callback_screen(screen_t *screen, fun_win_close_t win_close_callback) {
+    screen->win_close_callback = win_close_callback;
+}
+
+void set_win_refresh_callback_screen(screen_t *screen, fun_win_refresh_t win_refresh_callback) {
+    screen->win_refresh_callback = win_refresh_callback;
 }
 
 screen_info_rgb_t *get_screen_info(screen_x11_t *screen) {
@@ -418,9 +471,6 @@ void terminate_screen(screen_x11_t *screen) {
     memset(screen, 0, sizeof(screen_x11_t));
 }
 
-//========================================================================
-// Poll for new window and input events
-//========================================================================
 void poll_events_screen(screen_x11_t *screen) {
 
     bool close_requested = false;
@@ -450,18 +500,14 @@ void poll_events_screen(screen_x11_t *screen) {
 //        XFlush(screen->display);
     }
 
-    if(close_requested && screen->window_close_callback) {
-        close_requested = screen->window_close_callback();
+    if(close_requested && screen->win_close_callback) {
+        close_requested = screen->win_close_callback();
     }
 
     if(close_requested) {
         terminate_screen(screen);
     }
 }
-
-//========================================================================
-// Wait for new window and input events
-//========================================================================
 
 static void wait_events(screen_x11_t *screen)
 {
@@ -492,7 +538,7 @@ static void center_mouse(screen_x11_t *screen) {
     set_mouse_cursor_pos(screen, screen->width / 2, screen->height / 2);
 }
 
-//// vedi translateKey in window.c glfw
+//// vedi translate_key in window.c glfw
 //void check_event(screen_x11_t *screen) {
 //
 ////    process_single_event(screen);
@@ -619,9 +665,14 @@ static XImage *create_image(screen_x11_t *screen_x11) {
     return ximg;
 }
 
-static void init_atom_support(screen_x11_t *screen_x11) {
+static void init_atoms(screen_x11_t *screen_x11) {
     Atom *supportedAtoms;
     unsigned long atomCount;
+
+    // Find or create the protocol atom for window close notifications
+    screen_x11->wmDeleteWindow = XInternAtom( screen_x11->display,
+                                           "WM_DELETE_WINDOW",
+                                           False );
 
     Atom wmSupported = XInternAtom( screen_x11->display,
                                     "_NET_SUPPORTED",
@@ -1195,15 +1246,14 @@ static bool process_single_event(screen_x11_t *screen) {
     XNextEvent(screen->display, &event );
 //    if (XCheckWindowEvent(screen->display, screen->window, screen->event_mask, &event)) // not used
     // if or while?
-    switch (event.type)
-    {
+    switch (event.type) {
         case KeyPress: { // A keyboard key was pressed
 
             // Translate and report key press
-            input_key(screen, translateKey(screen, event.xkey.keycode), KEY_PRESS);
+            input_key(screen, translate_key(screen, event.xkey.keycode), KEY_PRESS);
 
             // Translate and report character input
-            if  (screen->char_callback) {
+            if (screen->char_callback) {
                 input_char(screen, translate_char(&event.xkey), KEY_PRESS);
             }
             break;
@@ -1215,21 +1265,19 @@ static bool process_single_event(screen_x11_t *screen) {
             // will get KeyRelease/KeyPress pairs with similar or identical
             // time stamps. User selected key repeat filtering is handled in
             // _glfwInputKey()/_glfwInputChar().
-            if (XEventsQueued(screen->display, QueuedAfterReading))
-            {
+            if (XEventsQueued(screen->display, QueuedAfterReading)) {
                 XEvent nextEvent;
                 XPeekEvent(screen->display, &nextEvent);
 
-                if( nextEvent.type == KeyPress &&
+                if (nextEvent.type == KeyPress &&
                     nextEvent.xkey.window == event.xkey.window &&
-                    nextEvent.xkey.keycode == event.xkey.keycode )
-                {
+                    nextEvent.xkey.keycode == event.xkey.keycode) {
                     // This last check is a hack to work around key repeats
                     // leaking through due to some sort of time drift
                     // Toshiyuki Takahashi can press a button 16 times per
                     // second so it's fairly safe to assume that no human is
                     // pressing the key 50 times per second (value is ms)
-                    if( ( nextEvent.xkey.time - event.xkey.time ) < 20 ) {
+                    if ((nextEvent.xkey.time - event.xkey.time) < 20) {
                         // Do not report anything for this event
                         break;
                     }
@@ -1237,36 +1285,72 @@ static bool process_single_event(screen_x11_t *screen) {
             }
 
             // Translate and report key press
-            input_key(screen, translateKey(screen, event.xkey.keycode), KEY_RELEASE);
+            input_key(screen, translate_key(screen, event.xkey.keycode), KEY_RELEASE);
 
             // Translate and report character input
-            if  (screen->char_callback) {
+            if (screen->char_callback) {
                 input_char(screen, translate_char(&event.xkey), KEY_RELEASE);
             }
             break;
         }
 
-        case MotionNotify:
-        {
+        case ButtonPress: {
+            // A mouse button was pressed or a scrolling event occurred
+
+            if (event.xbutton.button == Button1) {
+                input_mouse_click(screen, MOUSE_BUTTON_LEFT, KEY_PRESS);
+            } else if (event.xbutton.button == Button2) {
+                input_mouse_click(screen, MOUSE_BUTTON_MIDDLE, KEY_PRESS);
+            } else if (event.xbutton.button == Button3) {
+                input_mouse_click(screen, MOUSE_BUTTON_RIGHT, KEY_PRESS);
+            }
+
+                // XFree86 3.3.2 and later translates mouse wheel up/down into
+                // mouse button 4 & 5 presses
+            else if (event.xbutton.button == Button4) {
+                screen->input.wheelPos++;  // To verify: is this up or down?
+                if (screen->mouseWheelCallback) {
+                    screen->mouseWheelCallback(screen->input.wheelPos);
+                }
+            } else if (event.xbutton.button == Button5) {
+                screen->input.wheelPos--;
+                if (screen->mouseWheelCallback) {
+                    screen->mouseWheelCallback(screen->input.wheelPos);
+                }
+            }
+            break;
+        }
+
+        case ButtonRelease: {
+            // A mouse button was released
+            if (event.xbutton.button == Button1) {
+                input_mouse_click(screen, MOUSE_BUTTON_LEFT,
+                                  KEY_RELEASE);
+            } else if (event.xbutton.button == Button2) {
+                input_mouse_click(screen, MOUSE_BUTTON_MIDDLE,
+                                  KEY_RELEASE);
+            } else if (event.xbutton.button == Button3) {
+                input_mouse_click(screen, MOUSE_BUTTON_RIGHT,
+                                  KEY_RELEASE);
+            }
+            break;
+        }
+
+        case MotionNotify: {
             // The mouse cursor was moved
 
-            if( event.xmotion.x != screen->input.CursorPosX ||
-                event.xmotion.y != screen->input.CursorPosY )
-            {
+            if (event.xmotion.x != screen->input.CursorPosX ||
+                event.xmotion.y != screen->input.CursorPosY) {
                 // The mouse cursor was moved and we didn't do it
 
-                if( screen->mouseLock )
-                {
-                    if( screen->pointer_hidden)
-                    {
+                if (screen->mouseLock) {
+                    if (screen->pointer_hidden) {
                         screen->input.mousePosX += event.xmotion.x -
-                                                screen->input.CursorPosX;
+                                                   screen->input.CursorPosX;
                         screen->input.mousePosY += event.xmotion.y -
-                                                screen->input.CursorPosY;
+                                                   screen->input.CursorPosY;
                     }
-                }
-                else
-                {
+                } else {
                     screen->input.mousePosX = event.xmotion.x;
                     screen->input.mousePosY = event.xmotion.y;
                 }
@@ -1275,17 +1359,90 @@ static bool process_single_event(screen_x11_t *screen) {
                 screen->input.CursorPosY = event.xmotion.y;
                 screen->input.MouseMoved = true;
 
-                if( screen->mouse_pos_callback )
-                {
+                if (screen->mouse_pos_callback) {
                     screen->mouse_pos_callback(screen->input.mousePosX, screen->input.mousePosY);
                 }
             }
             break;
         }
 
+        case ConfigureNotify: {
+            if (event.xconfigure.width != screen->width ||
+                event.xconfigure.height != screen->height) {
+                // The window was resized
 
-        default:
+                screen->width = event.xconfigure.width;
+                screen->height = event.xconfigure.height;
+                if (screen->win_size_callback) {
+                    screen->win_size_callback(screen->width,
+                                              screen->height);
+                }
+            }
             break;
+        }
+
+        case ClientMessage: {
+            if ((Atom) event.xclient.data.l[0] == screen->wmDeleteWindow) {
+                // The window manager was asked to close the window, for example by
+                // the user pressing a 'close' window decoration button
+
+                return true;
+            } else if (screen->wmPing != None &&
+                       (Atom) event.xclient.data.l[0] == screen->wmPing) {
+                // The window manager is pinging us to make sure we are still
+                // responding to events
+
+                event.xclient.window = screen->root;
+                XSendEvent(screen->display,
+                           event.xclient.window,
+                           False,
+                           SubstructureNotifyMask | SubstructureRedirectMask,
+                           &event);
+            }
+
+            break;
+        }
+
+        case MapNotify: {
+            // The window was mapped
+            screen->iconified = false;
+            break;
+        }
+
+        case UnmapNotify: {
+            // The window was unmapped
+            screen->iconified = true;
+            break;
+        }
+
+        case FocusOut: {
+            // The window lost focus
+            screen->active = false;
+            input_deactivation(screen);
+
+            if (screen->mouseLock) {
+                show_mouse_cursor(screen);
+            }
+
+            break;
+        }
+
+        case Expose: {
+            // The window's contents was damaged
+            if (screen->win_refresh_callback) {
+                screen->win_refresh_callback();
+            }
+            break;
+        }
+
+            // Was the window destroyed?
+        case DestroyNotify: {
+            return false;
+        }
+
+        default: {
+            break;
+        }
     }
 
     // The window was not destroyed
@@ -1325,6 +1482,34 @@ static void clear_input(screen_x11_t *screen)
 
     // The default is to disable key repeat
     screen->input.KeyRepeat = false;
+}
+
+
+//========================================================================
+// Handle the input tracking part of window deactivation
+//========================================================================
+
+void input_deactivation(screen_x11_t *screen)
+{
+    int i;
+
+    // Release all keyboard keys
+    for( i = 0; i <= KEY_LAST; i ++ )
+    {
+        if( screen->input.key[ i ] == KEY_PRESS )
+        {
+            input_key(screen, i, KEY_RELEASE );
+        }
+    }
+
+    // Release all mouse buttons
+    for( i = 0; i <= MOUSE_BUTTON_LAST; i ++ )
+    {
+        if( screen->input.mouseButton[ i ] == KEY_PRESS )
+        {
+            input_mouse_click(screen, i, KEY_RELEASE );
+        }
+    }
 }
 
 //========================================================================
@@ -1408,6 +1593,33 @@ static void input_char(screen_x11_t *screen, int character, int action)
     }
 }
 
+//========================================================================
+// Register mouse button clicks
+//========================================================================
+
+static void input_mouse_click(screen_x11_t *screen, int button, int action)
+{
+    if( button >= 0 && button <= MOUSE_BUTTON_LAST )
+    {
+        // Register mouse button action
+        if( action == KEY_RELEASE && screen->input.StickyMouseButtons )
+        {
+            screen->input.mouseButton[ button ] = STICK;
+        }
+        else
+        {
+            screen->input.mouseButton[ button ] = (char) action;
+        }
+
+        // Call user callback function
+        if( screen->mouseButtonCallback )
+        {
+            screen->mouseButtonCallback( button, action );
+        }
+    }
+}
+
+
 static int translate_char(XKeyEvent *event)
 {
 //    KeySym keysym;
@@ -1422,7 +1634,7 @@ static int translate_char(XKeyEvent *event)
     return ch;
 }
 
-static int translateKey(screen_x11_t *screen, int keycode) {
+static int translate_key(screen_x11_t *screen, int keycode) {
 
     KeySym key, key_lc, key_uc;
 
@@ -1564,17 +1776,17 @@ static void flush_printf(const char *format, ...) {
 //    // Un-grab cursor (only in windowed mode: in fullscreen mode we still
 //    // want the mouse grabbed in order to confine the cursor to the window
 //    // area)
-//    if( _glfwWin.pointer_grabbed )
+//    if( screen->pointer_grabbed )
 //    {
 //        XUngrabPointer( _glfwLibrary.display, CurrentTime );
-//        _glfwWin.pointer_grabbed = GL_FALSE;
+//        screen->pointer_grabbed = GL_FALSE;
 //    }
 //
 //    // Show cursor
-//    if( _glfwWin.pointerHidden )
+//    if( screen->pointerHidden )
 //    {
-//        XUndefineCursor( _glfwLibrary.display, _glfwWin.window );
-//        _glfwWin.pointerHidden = GL_FALSE;
+//        XUndefineCursor( _glfwLibrary.display, screen->window );
+//        screen->pointerHidden = GL_FALSE;
 //    }
 //}
 
