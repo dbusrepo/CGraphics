@@ -24,3 +24,10 @@ void set_mouse_wheel_callback_screen(screen_t *screen, fun_mouse_wheel_t mouse_w
 void set_win_size_callback_screen(screen_t *screen, fun_win_size_t win_size_callback);
 void set_win_close_callback_screen(screen_t *screen, fun_win_close_t win_close_callback);
 void set_win_refresh_callback_screen(screen_t *screen, fun_win_refresh_t win_refresh_callback);
+
+int get_key_screen(screen_t *screen, int key);
+int get_mouse_button(screen_t *screen, int button);
+void get_mouse_position(screen_t *screen, int *x, int *y);
+void set_mouse_position(screen_t *screen, int x, int y);
+int get_mouse_wheel(screen_t *screen);
+void set_mouse_wheel(screen_t *screen, int pos);

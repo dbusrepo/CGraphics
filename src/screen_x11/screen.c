@@ -49,7 +49,6 @@ struct screen {
 //    bool       autoPollEvents;  // Auto polling flag // Not used?
 
     // Window status & parameters
-    bool opened;          // Flag telling if window is opened or not // TODO
     bool active;          // Application active flag // TODO
     bool iconified;       // Window iconified flag // TODO
 //    uint32_t x, y;      // win top left coords
@@ -489,6 +488,72 @@ void set_win_refresh_callback_screen(screen_t *screen, fun_win_refresh_t win_ref
     screen->win_refresh_callback = win_refresh_callback;
 }
 
+int get_key_screen(screen_t *screen, int key) {
+    // Is it a valid key?
+    if( key < 0 || key > KEY_LAST ) {
+        return KEY_RELEASE;
+    }
+    if (screen->input.key[ key ] == STICK) {
+        // Sticky mode: release key now
+        screen->input.key[ key ] = KEY_RELEASE;
+        return KEY_PRESS;
+    }
+    return (int) screen->input.key[ key ];
+}
+
+int get_mouse_button(screen_t *screen, int button) {
+    // Is it a valid mouse button?
+    if( button < 0 || button > MOUSE_BUTTON_LAST ) {
+        return KEY_RELEASE;
+    }
+
+    if (screen->input.mouseButton[ button ] == STICK) {
+        // Sticky mode: release mouse button now
+        screen->input.mouseButton[ button ] = KEY_RELEASE;
+        return KEY_PRESS;
+    }
+    return (int) screen->input.mouseButton[ button ];
+}
+
+void get_mouse_position(screen_t *screen, int *x, int *y) {
+    if( x != NULL ) {
+        *x = screen->input.mousePosX;
+    }
+    if( y != NULL ) {
+        *y = screen->input.mousePosY;
+    }
+}
+
+void set_mouse_position(screen_t *screen, int x, int y) {
+    // Don't do anything if the mouse position did not change
+    if (x == screen->input.mousePosX && y == screen->input.mousePosY) {
+        return;
+    }
+
+    // Set GLFW mouse position
+    screen->input.mousePosX = x;
+    screen->input.mousePosY = y;
+
+    // If we have a locked mouse, do not change cursor position
+    if (screen->mouseLock) {
+        return;
+    }
+
+    // Update physical cursor position
+    set_mouse_cursor_pos(screen, x, y);
+}
+
+int get_mouse_wheel(screen_t *screen) {
+// Return mouse wheel position
+    return screen->input.wheelPos;
+}
+
+void set_mouse_wheel(screen_t *screen, int pos) {
+    // Set mouse wheel position
+    screen->input.wheelPos = pos;
+}
+
+
 screen_info_rgb_t *get_screen_info(screen_x11_t *screen) {
     return screen->screen_info_rgb;
 }
@@ -533,7 +598,7 @@ void poll_events_screen(screen_x11_t *screen) {
 
     uint64_t delta = nano_time() - screen_start_time;
     uint64_t limit = (NANO_IN_SEC * 25);
-//    flush_printf("delta: %lu, limit: %lu\n", delta, limit);
+//    flush_printf("delta %lu, limit: %lu\n", delta, limit);
     if (delta > limit) {
         exit(1);
     }
@@ -562,11 +627,11 @@ void poll_events_screen(screen_x11_t *screen) {
 
 //        set_mouse_cursor_pos(screen, 0, 0);
 //        center_mouse(screen);
+        //       the necessary actions per callback call.
         XSync(screen->display, False);
 
         // NOTE: This is a temporary fix.  It works as long as you use offsets
         //       accumulated over the course of a frame, instead of performing
-        //       the necessary actions per callback call.
 //        XFlush(screen->display);
     }
 
