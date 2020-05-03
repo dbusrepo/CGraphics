@@ -298,7 +298,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     // Clear window state
     screen->active         = true;
     screen->iconified      = false;
-    screen->mouseLock      = true;
+
 //    screen->autoPollEvents = true; // not used
     clear_input(screen);
 
@@ -326,9 +326,6 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
         print_coord_root(screen);
 //        int windowX, windowY;
 //        get_cursor_pos(screen, &windowX, &windowY);
-    } else {
-//        center_window(screen); // Make sure the window is mapped before using this
-//        center_mouse(screen);
     }
 
     // Process the window map event and any other that may have arrived
@@ -339,7 +336,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 
     init_screen_buffer(screen);
 
-//     for testing...
+//    //for testing...
 //    struct timespec sleep_time_s = {2, 0 };
 //    nanosleep(&sleep_time_s, NULL);
 //    exit(1);
@@ -486,14 +483,16 @@ void poll_events_screen(screen_x11_t *screen) {
     }
 
     // Did we get mouse movement in fully enabled hidden cursor mode?
-    if(screen->input.MouseMoved && screen->pointer_hidden) {
+    if(screen->input.MouseMoved && (screen->fullscreen && screen->pointer_hidden)) {
 //    if(screen->fullscreen) {
 //        int windowX, windowY;
 //        get_cursor_pos(screen, &windowX, &windowY);
 //        flush_printf("recentering mouse...\n");
-        set_mouse_cursor_pos(screen, 0, 0);
+
+//        set_mouse_cursor_pos(screen, 0, 0);
         center_mouse(screen);
         XSync(screen->display, False);
+
         // NOTE: This is a temporary fix.  It works as long as you use offsets
         //       accumulated over the course of a frame, instead of performing
         //       the necessary actions per callback call.
@@ -765,6 +764,7 @@ static void enter_fullscreen(screen_x11_t *screen) {
 //    XMoveWindow(screen->display, screen->window, 0, 0);
 
     XSync(screen->display, False);
+
     if (screen->mouseLock) {
         hide_mouse_cursor(screen);
     }
@@ -873,7 +873,10 @@ static void update_window_size(screen_x11_t *screen)
     int width = screen->width; // start with these...
     int height = screen->height;
 
+    screen->mouseLock      = false;
+
     if(screen->fullscreen ) {
+        screen->mouseLock      = true;
         // Get the closest matching video mode for the specified window size
         mode = find_best_video_mode(screen, &width, &height);
     }
@@ -892,7 +895,7 @@ static void update_window_size(screen_x11_t *screen)
 
     if (screen->fullscreen) {
         // Change video mode, keeping current refresh rate
-        change_video_mode(screen, mode);
+//        change_video_mode(screen, mode); // TODO decomment
     }
 
     // Set window size (if not already changed)
@@ -1366,20 +1369,22 @@ static bool process_single_event(screen_x11_t *screen) {
             break;
         }
 
-        case ConfigureNotify: {
-            if (event.xconfigure.width != screen->width ||
-                event.xconfigure.height != screen->height) {
-                // The window was resized
-
-                screen->width = event.xconfigure.width;
-                screen->height = event.xconfigure.height;
-                if (screen->win_size_callback) {
-                    screen->win_size_callback(screen->width,
-                                              screen->height);
-                }
-            }
-            break;
-        }
+        // not handled...se problem below
+//        case ConfigureNotify: {
+//            if (event.xconfigure.width != screen->width ||
+//                event.xconfigure.height != screen->height) {
+//                // The window was resized
+//                screen->width = event.xconfigure.width;
+//                screen->height = event.xconfigure.height;
+//                // problem: enter fullscreen porta la res a 2560x1440 e fa crashare create_img shm...
+//                flush_printf("window resized to %dx%d", screen->width, screen->height);
+//                if (screen->win_size_callback) {
+//                    screen->win_size_callback(screen->width,
+//                                              screen->height);
+//                }
+//            }
+//            break;
+//        }
 
         case ClientMessage: {
             if ((Atom) event.xclient.data.l[0] == screen->wmDeleteWindow) {
@@ -1412,6 +1417,18 @@ static bool process_single_event(screen_x11_t *screen) {
         case UnmapNotify: {
             // The window was unmapped
             screen->iconified = true;
+            break;
+        }
+
+        case FocusIn:
+        {
+            // The window gained focus
+            screen->active = true;
+
+            if( screen->mouseLock )
+            {
+                hide_mouse_cursor(screen);
+            }
             break;
         }
 
