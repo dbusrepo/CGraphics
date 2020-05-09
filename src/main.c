@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     screen_settings->width = 1024;
     screen_settings->height = 768;
     screen_settings->targetFps = 60;
-    screen_settings->show_rendering_info = true;
+    screen_settings->show_stats = true;
     screen_settings->fullscreen = false;
     app = init_app(screen_settings);
     run_app(app, update, render, key_event);

@@ -19,7 +19,10 @@ set(MY_RELEASE_OPTIONS)
 
 #-pedantic-errors
 
-message("using cmake ${CMAKE_VERSION}")
+message(STATUS "CMAKE_SYSTEM_NAME        = ${CMAKE_SYSTEM_NAME}")
+message(STATUS "CMAKE_VERSION            = ${CMAKE_VERSION}")
+message(STATUS "CMAKE_C_COMPILER_ID      = ${CMAKE_C_COMPILER_ID}")
+message(STATUS "CMAKE_C_COMPILER_VERSION = ${CMAKE_C_COMPILER_VERSION}")
 
 #https://stackoverflow.com/questions/10046114/in-cmake-how-can-i-test-if-the-compiler-is-clang
 if (CMAKE_C_COMPILER_ID MATCHES GNU)

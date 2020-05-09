@@ -29,6 +29,8 @@
 
 typedef struct screen screen_x11_t;
 
+static const int MAX_EXEC_SECONDS = 25; // limit to the exec time (vedi bug fullscreen toggling)
+
 uint64_t screen_start_time;
 
 struct screen {
@@ -206,9 +208,9 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
 //    // create and map (display) an X window for output
 //    int count_screens = ScreenCount(screen->display);
 //    printf("Total count screens: %d\n", count_screens);
-//    for (int i = 0; i < count_screens; ++i) {
-//        Screen *screen = ScreenOfDisplay(screen->display, i);
-//        printf("\tScreen %d: %dX%d\n", i + 1, screen->width, screen->height);
+//    for (int MAX_EXEC_SECONDS = 0; MAX_EXEC_SECONDS < count_screens; ++MAX_EXEC_SECONDS) {
+//        Screen *screen = ScreenOfDisplay(screen->display, MAX_EXEC_SECONDS);
+//        printf("\tScreen %d: %dX%d\n", MAX_EXEC_SECONDS + 1, screen->width, screen->height);
 //    }
 
     screen->screen_idx = DefaultScreen(screen->display);
@@ -432,7 +434,7 @@ static void get_cursor_pos(screen_x11_t *screen, int *windowX, int *windowY) {
 
 void center_window(screen_x11_t *screen) {
     // TODO ...
-    int display_width = XDisplayWidth(screen->display, screen->screen_idx) / 2; // TODO fix /2 ?? pare che la width comprenda entrambi i monitor...
+    int display_width = XDisplayWidth(screen->display, screen->screen_idx) / 2; // TODO fix /2 ?? pare che la width comprenda entrambi MAX_EXEC_SECONDS monitor...
     int display_height = XDisplayHeight(screen->display, screen->screen_idx);
     int x = (display_width - screen->width) / 2;
     int y = (display_height - screen->height) / 2;
@@ -597,8 +599,9 @@ void terminate_screen(screen_x11_t *screen) {
 void poll_events_screen(screen_x11_t *screen) {
 
     uint64_t delta = nano_time() - screen_start_time;
-    uint64_t limit = (NANO_IN_SEC * 25);
+    uint64_t limit = (NANO_IN_SEC * MAX_EXEC_SECONDS);
 //    flush_printf("delta %lu, limit: %lu\n", delta, limit);
+
     if (delta > limit) {
         exit(1);
     }
@@ -2034,16 +2037,16 @@ static void flush_printf(const char *format, ...) {
 //    {
 //        int bestMode  = -1;
 //        int bestMatch = INT_MAX;
-//        for(int i = 0; i < modeCount; i ++)
+//        for(int MAX_EXEC_SECONDS = 0; MAX_EXEC_SECONDS < modeCount; MAX_EXEC_SECONDS ++)
 //        {
-//            int match = (*width  - modes[i]->hdisplay) *
-//                        (*width  - modes[i]->hdisplay) +
-//                        (*height - modes[i]->vdisplay) *
-//                        (*height - modes[i]->vdisplay);
+//            int match = (*width  - modes[MAX_EXEC_SECONDS]->hdisplay) *
+//                        (*width  - modes[MAX_EXEC_SECONDS]->hdisplay) +
+//                        (*height - modes[MAX_EXEC_SECONDS]->vdisplay) *
+//                        (*height - modes[MAX_EXEC_SECONDS]->vdisplay);
 //            if(match < bestMatch)
 //            {
 //                bestMatch = match;
-//                bestMode  = i;
+//                bestMode  = MAX_EXEC_SECONDS;
 //            }
 //        }
 //        *width  = modes[bestMode]->hdisplay;

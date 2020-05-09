@@ -7,6 +7,6 @@ typedef struct screen_settings {
     uint32_t width;
     uint32_t height;
     int targetFps;
-    bool show_rendering_info;
+    bool show_stats;
     bool fullscreen;
 } screen_settings_t;
