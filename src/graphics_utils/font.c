@@ -3,7 +3,7 @@
 #include <inttypes.h>
 
 #include "common.h"
-#include "screen_info_rgb.h"
+#include "screen_info.h"
 #include "font.h"
 
 #define FONT_Y_SIZE 13
@@ -61,14 +61,14 @@ static const uint8_t letters[][FONT_Y_SIZE] = {
 static uint8_t font_bitmaps[256][13];
 static uint8_t *text_color;
 
-void set_text_color(screen_info_rgb_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
+void set_text_color(screen_info_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
 
     uint32_t native_col = ext_to_native(screen_info, red, green, blue);
 
     uint32_t mask = MAX_BYTE;
     uint32_t shift = 0;
 
-    // stuff the bytes in the unsigned long col into the text-color buffer, in
+    // stuff the bytes in the unsigned long col into the text-color pbuffer, in
     // little-endian order
     uint8_t *c = text_color;
     for(uint32_t i=0; i < screen_info->bytes_per_pixel; i++) {
@@ -78,7 +78,7 @@ void set_text_color(screen_info_rgb_t *screen_info, uint32_t red, uint32_t green
     }
 }
 
-void font_init(screen_info_rgb_t *screen_info) {
+void font_init(screen_info_t *screen_info) {
 
     text_color = malloc(screen_info->bytes_per_pixel * sizeof(uint8_t));
     set_text_color(screen_info, screen_info->ext_max_red, screen_info->ext_max_green, screen_info->ext_max_blue);
@@ -110,13 +110,13 @@ void font_init(screen_info_rgb_t *screen_info) {
 //#define SW_RAST_Y_REVERSAL(height,y) ((height) - (y))
 #define SW_RAST_Y_REVERSAL(ysize,y) (y)
 
-void draw_text(screen_info_rgb_t *screen_info, uint32_t xsize, uint32_t ysize, uint32_t x, uint32_t y, const char *text) {
+void draw_text(screen_info_t *screen_info, uint32_t xsize, uint32_t ysize, uint32_t x, uint32_t y, const char *text) {
 
     uint32_t x_offset = x * screen_info->bytes_per_pixel;
     uint8_t *pix;
 
     for(uint32_t font_y=0; font_y < FONT_Y_SIZE; font_y++) {
-        pix= screen_info->buffer + x_offset + ((y + font_y) * xsize) * screen_info->bytes_per_pixel;
+        pix= screen_info->pbuffer + x_offset + ((y + font_y) * xsize) * screen_info->bytes_per_pixel;
 
         for(size_t c=0; c<strlen(text); c++) {
             for(uint32_t font_x=0, current_bit=0x80;

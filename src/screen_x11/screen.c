@@ -15,8 +15,8 @@
 #include <tiff.h>
 
 #include "../graphics_utils/common.h"
-#include "../graphics_utils/screen_info_rgb_p.h"
-#include "../app/screen.h"
+#include "../graphics_utils/screen_info_p.h"
+#include "screen.h"
 
 // font used with text drawing
 #define FONT_NAME "-*-fixed-*-*-*-*-18-*-*-*-*-*-iso8859-*" //"-*-fixed-*-r-*-*-22-*-*-*-*-*-*-*" //"*-helvetica-*-12-*"
@@ -31,7 +31,7 @@ typedef struct screen screen_x11_t;
 
 static const int MAX_EXEC_SECONDS = 25; // limit to the exec time (vedi bug fullscreen toggling)
 
-uint64_t screen_start_time;
+//uint64_t screen_start_time;
 
 struct screen {
     // callback functions ??
@@ -59,7 +59,7 @@ struct screen {
     uint32_t buf_size;                      // screen_buffer size
     uint8_t *buffer;                    // offscreen screen_buffer data for ximage
 //    XFontStruct* font_info;
-    screen_info_rgb_t *screen_info_rgb;
+    screen_info_t *screen_info_rgb;
 
     // ========= PLATFORM SPECIFIC PART ======================================
     Visual *vis;                      // X11: Visual (visual info about X server)
@@ -173,9 +173,9 @@ void init_window(screen_x11_t *screen);
 // TODO see createWindow e _glfwPlatformOpenWindow in glfw/lib/x11/x11_window.c
 // e anche glfwOpenWindow in window.c (generico, no x11)
 // _glfwPlatformCloseWindow
-screen_x11_t *init_screen(screen_settings_t *screen_settings) {
+screen_x11_t *screen_init(screen_settings_t *screen_settings) {
 
-    screen_start_time = nano_time();
+//    screen_start_time = nano_time();
 
     screen_x11_t *screen = malloc(sizeof(screen_x11_t));
     memset(screen, 0, sizeof(screen_x11_t));
@@ -289,7 +289,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     /* change the foreground color of this GC to white. */
     XSetForeground(screen->display, screen->gc, WhitePixel(screen->display, screen->screen_idx));
 
-    screen->screen_info_rgb = init_screen_info_rgb(
+    screen->screen_info_rgb = init_screen_info(
             screen->vis->red_mask, screen->vis->green_mask, screen->vis->blue_mask,
             screen->bytespp, screen->depth / BITS_PER_BYTE, NULL);
 
@@ -357,7 +357,7 @@ screen_x11_t *init_screen(screen_settings_t *screen_settings) {
     center_mouse(screen);
 
     // Process the window map event and any other that may have arrived
-    poll_events_screen(screen);
+    screen_poll_events(screen);
 
     // Retrieve and set initial cursor position
     init_cursor_pos(screen);
@@ -443,15 +443,15 @@ void center_window(screen_x11_t *screen) {
     XSync(screen->display, False);
 }
 
-void set_key_callback_screen(screen_t *screen, fun_key_t key_callback) {
+void screen_set_key_callback(screen_t *screen, fun_key_t key_callback) {
     screen->key_callback = key_callback;
 }
 
-void set_char_callback_screen(screen_t *screen, fun_char_t char_callback) {
+void screen_set_char_callback(screen_t *screen, fun_char_t char_callback) {
     screen->char_callback = char_callback;
 }
 
-void set_mouse_pos_callback_screen(screen_t *screen, fun_mouse_pos_t mouse_pos_callback) {
+void screen_set_mouse_pos_callback(screen_t *screen, fun_mouse_pos_t mouse_pos_callback) {
     screen->mouse_pos_callback = mouse_pos_callback;
     // Call the callback function to let the application know the current
     // mouse position
@@ -460,11 +460,11 @@ void set_mouse_pos_callback_screen(screen_t *screen, fun_mouse_pos_t mouse_pos_c
     }
 }
 
-void set_mouse_button_callback_screen(screen_t *screen, fun_mouse_button_t mouse_button_callback) {
+void screen_set_mouse_button_callback(screen_t *screen, fun_mouse_button_t mouse_button_callback) {
     screen->mouseButtonCallback = mouse_button_callback;
 }
 
-void set_mouse_wheel_callback_screen(screen_t *screen, fun_mouse_wheel_t mouse_wheel_callback) {
+void screen_set_mouse_wheel_callback(screen_t *screen, fun_mouse_wheel_t mouse_wheel_callback) {
     screen->mouseWheelCallback = mouse_wheel_callback;
     // Call the callback function to let the application know the current
     // mouse wheel position
@@ -473,7 +473,7 @@ void set_mouse_wheel_callback_screen(screen_t *screen, fun_mouse_wheel_t mouse_w
     }
 }
 
-void set_win_size_callback_screen(screen_t *screen, fun_win_size_t win_size_callback) {
+void screen_win_size_callback(screen_t *screen, fun_win_size_t win_size_callback) {
     screen->win_size_callback = win_size_callback;
     // Call the callback function to let the application know the current
     // window size
@@ -482,15 +482,15 @@ void set_win_size_callback_screen(screen_t *screen, fun_win_size_t win_size_call
     }
 }
 
-void set_win_close_callback_screen(screen_t *screen, fun_win_close_t win_close_callback) {
+void screen_set_win_close_callback(screen_t *screen, fun_win_close_t win_close_callback) {
     screen->win_close_callback = win_close_callback;
 }
 
-void set_win_refresh_callback_screen(screen_t *screen, fun_win_refresh_t win_refresh_callback) {
+void screen_set_win_refresh_callback(screen_t *screen, fun_win_refresh_t win_refresh_callback) {
     screen->win_refresh_callback = win_refresh_callback;
 }
 
-int get_key_screen(screen_t *screen, int key) {
+int screen_get_key(screen_t *screen, int key) {
     // Is it a valid key?
     if( key < 0 || key > KEY_LAST ) {
         return KEY_RELEASE;
@@ -503,7 +503,7 @@ int get_key_screen(screen_t *screen, int key) {
     return (int) screen->input.key[ key ];
 }
 
-int get_mouse_button(screen_t *screen, int button) {
+int screen_get_mouse(screen_t *screen, int button) {
     // Is it a valid mouse button?
     if( button < 0 || button > MOUSE_BUTTON_LAST ) {
         return KEY_RELEASE;
@@ -517,7 +517,7 @@ int get_mouse_button(screen_t *screen, int button) {
     return (int) screen->input.mouseButton[ button ];
 }
 
-void get_mouse_position(screen_t *screen, int *x, int *y) {
+void screen_get_mouse_position(screen_t *screen, int *x, int *y) {
     if( x != NULL ) {
         *x = screen->input.mousePosX;
     }
@@ -526,7 +526,7 @@ void get_mouse_position(screen_t *screen, int *x, int *y) {
     }
 }
 
-void set_mouse_position(screen_t *screen, int x, int y) {
+void screen_set_mouse_position(screen_t *screen, int x, int y) {
     // Don't do anything if the mouse position did not change
     if (x == screen->input.mousePosX && y == screen->input.mousePosY) {
         return;
@@ -545,22 +545,22 @@ void set_mouse_position(screen_t *screen, int x, int y) {
     set_mouse_cursor_pos(screen, x, y);
 }
 
-int get_mouse_wheel(screen_t *screen) {
+int screen_get_mouse_wheel(screen_t *screen) {
 // Return mouse wheel position
     return screen->input.wheelPos;
 }
 
-void set_mouse_wheel(screen_t *screen, int pos) {
+void screen_set_mouse_wheel(screen_t *screen, int pos) {
     // Set mouse wheel position
     screen->input.wheelPos = pos;
 }
 
 
-screen_info_rgb_t *get_screen_info(screen_x11_t *screen) {
+screen_info_t *screen_get_info(screen_x11_t *screen) {
     return screen->screen_info_rgb;
 }
 
-void terminate_screen(screen_x11_t *screen) {
+void screen_terminate(screen_x11_t *screen) {
     // vedi _glfwPlatformCloseWindow
     printf("\nexiting...\n");
 
@@ -596,15 +596,14 @@ void terminate_screen(screen_x11_t *screen) {
 //    memset(screen, 0, sizeof(screen_x11_t));
 }
 
-void poll_events_screen(screen_x11_t *screen) {
+void screen_poll_events(screen_x11_t *screen) {
 
-    uint64_t delta = nano_time() - screen_start_time;
-    uint64_t limit = (NANO_IN_SEC * MAX_EXEC_SECONDS);
+//    uint64_t delta = nano_time() - screen_start_time;
+//    uint64_t limit = (NANO_IN_SEC * MAX_EXEC_SECONDS);
 //    flush_printf("delta %lu, limit: %lu\n", delta, limit);
-
-    if (delta > limit) {
-        exit(1);
-    }
+//    if (delta > limit) {
+//        exit(1);
+//    }
 
     bool close_requested = false;
 
@@ -643,7 +642,7 @@ void poll_events_screen(screen_x11_t *screen) {
     }
 
     if(close_requested) {
-        terminate_screen(screen);
+        screen_terminate(screen);
     }
 }
 
@@ -655,7 +654,7 @@ static void wait_events(screen_x11_t *screen)
     XNextEvent(screen->display, &event );
     XPutBackEvent(screen->display, &event );
 
-    poll_events_screen(screen);
+    screen_poll_events(screen);
 }
 
 
@@ -681,7 +680,7 @@ static void center_mouse(screen_x11_t *screen) {
 //
 ////    process_single_event(screen);
 //
-//    poll_events_screen(screen);
+//    screen_poll_events(screen);
 //
 //    // required in fullscreen ?
 ////    set_mouse_cursor_pos(screen, 0, 0);
@@ -698,7 +697,7 @@ static void center_mouse(screen_x11_t *screen) {
 ////    }
 //}
 
-void blit_screen(screen_x11_t *screen) {
+void screen_blit(screen_x11_t *screen) {
     XShmPutImage(screen->display, screen->window, screen->gc, screen->ximg,
                  0, 0, 0, 0,
                  (unsigned int)screen->width, (unsigned int)screen->height,
@@ -715,7 +714,7 @@ static Bool isUnmapNotify(Display *dpy, XEvent *ev, XPointer win)
     return ev->type == UnmapNotify && ev->xunmap.window == *((Window*)win);
 }
 
-void toggle_fullscreen_mode(screen_t *screen) {
+void screen_toggle_fullscreen(screen_t *screen) {
     screen->fullscreen = !screen->fullscreen;
 //    int windowX, windowY;
 //    get_cursor_pos(screen, &windowX, &windowY);
@@ -783,7 +782,7 @@ void toggle_fullscreen_mode(screen_t *screen) {
 
     XSync(screen->display, False);
 
-    poll_events_screen(screen);
+    screen_poll_events(screen);
 
 //    int windowX, windowY;
 //    get_cursor_pos(screen, &windowX, &windowY);
@@ -811,9 +810,9 @@ static void wait_ms(int ms) {
 static void init_screen_buffer(screen_x11_t *screen) {
     screen->ximg = create_image(screen);
     screen->buf_size = screen->width * screen->height * screen->bytespp; // used for clearing screen_num buf
-//    screen->buffer = malloc(width*height*screen->bytespp); // not necessary with the shm
+//    screen->pbuffer = malloc(width*height*screen->bytespp); // not necessary with the shm
     screen->buffer = (uint8_t *) (screen->ximg->data);
-    update_screen_buffer(screen->screen_info_rgb, screen->buffer);
+    update_screen_pbuffer(screen->screen_info_rgb, screen->buffer);
 }
 
 // Set window & icon title
@@ -1635,7 +1634,7 @@ static bool process_single_event(screen_x11_t *screen) {
         {
             if (screen->fullscreen) break;
 
-            flush_printf("start FOCUS IN...\n");
+//            flush_printf("start FOCUS IN...\n");
 
             // The window gained focus
             screen->active = true;
@@ -1644,14 +1643,14 @@ static bool process_single_event(screen_x11_t *screen) {
                 hide_mouse_cursor(screen);
             }
 
-            flush_printf("end FOCUS IN...\n");
+//            flush_printf("end FOCUS IN...\n");
             break;
         }
 
         case FocusOut: {
             if (screen->fullscreen) break;
 
-            flush_printf("start FOCUS OUT...\n");
+//            flush_printf("start FOCUS OUT...\n");
             // The window lost focus
             screen->active = false;
             input_deactivation(screen);
@@ -1659,7 +1658,7 @@ static bool process_single_event(screen_x11_t *screen) {
             if (screen->mouseLock) {
                 show_mouse_cursor(screen);
             }
-            flush_printf("end FOCUS OUT...\n");
+//            flush_printf("end FOCUS OUT...\n");
             break;
         }
 

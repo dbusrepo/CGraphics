@@ -1,23 +1,15 @@
 #PRINT_CUR_BINARY_DIR()
 
-add_library(screen_x11 OBJECT "")
+add_library(screen_x11 STATIC "")
+
+file(GLOB SOURCES "*.c")
+file(GLOB HEADERS "*.h")
 
 target_sources(screen_x11
         PRIVATE
-        screen.c
-        ../graphics_utils/common.h
-        ../graphics_utils/screen_info_rgb.h
-        ../graphics_utils/screen_info_rgb_p.h
-        ../graphics_utils/screen_settings.h
-        ../graphics_utils/screen_callback.h
-        ../graphics_utils/input_keys.h
-        ../app/screen.h
+        "${SOURCES}"
         PUBLIC
-        ../app/screen.h
-        ../graphics_utils/screen_info_rgb.h
-        ../graphics_utils/screen_settings.h
-        ../graphics_utils/screen_callback.h
-        ../graphics_utils/input_keys.h
+        "${HEADERS}"
         )
 
 target_compile_options(screen_x11
@@ -41,3 +33,11 @@ target_link_libraries(screen_x11
         #Xrandr
         #        graphics_utils
         )
+
+foreach (SOURCE ${SOURCES})
+    get_filename_component(SOURCE_NAME "${SOURCE}" NAME)
+    add_custom_command(TARGET screen_x11
+            POST_BUILD
+            COMMAND make ARGS ${SOURCE_NAME}.s
+            )
+endforeach(SOURCE)

@@ -1,11 +1,32 @@
-add_library(graphics_utils OBJECT "" screen_callback.h input_keys.h)
+add_library(graphics_utils STATIC "")
+
+file(GLOB SOURCES "*.c")
+
+file(GLOB HEADERS "*.h")
 
 target_sources(graphics_utils
         PRIVATE
-        common.h
-        font.h
-        font.c
-        screen_info_rgb.h
-        screen_info_rgb_p.h
-        screen_info_rgb.c
+        "${SOURCES}"
+        PUBLIC
+        "${HEADERS}"
         )
+
+target_compile_options(graphics_utils
+        PRIVATE
+        "${MY_OPTIONS}"
+        "$<$<CONFIG:Debug>:${MY_DEBUG_OPTIONS}>"
+        "$<$<CONFIG:Release>:${MY_RELEASE_OPTIONS}>"
+        )
+
+target_include_directories(graphics_utils
+        PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}
+        )
+
+foreach (SOURCE ${SOURCES})
+    get_filename_component(SOURCE_NAME "${SOURCE}" NAME)
+#    add_custom_command(TARGET graphics_utils
+#            POST_BUILD
+#            COMMAND make ARGS ${SOURCE_NAME}.s
+#            )
+endforeach(SOURCE)

@@ -2,25 +2,25 @@
 #include <tiff.h>
 #include <zconf.h>
 #include "common.h"
-#include "screen_info_rgb.h"
-#include "screen_info_rgb_p.h"
+#include "screen_info.h"
+#include "screen_info_p.h"
 
-static void compute_color_resolution(screen_info_rgb_t *screen_info);
+static void compute_color_resolution(screen_info_t *screen_info);
 static void compute_color_shift_and_max_value(uint32_t mask, uint32_t *p_shift, uint32_t *p_max);
 
-screen_info_rgb_t *init_screen_info_rgb(
+screen_info_t *init_screen_info(
         uint32_t red_mask, uint32_t green_mask, uint32_t blue_mask,
         uint32_t bytes_per_pixel, uint32_t bytes_per_rgb,
         uint8_t *buffer) {
 
-    screen_info_rgb_t *screen_info = malloc(sizeof(screen_info_rgb_t));
+    screen_info_t *screen_info = malloc(sizeof(screen_info_t));
 
     screen_info->red_mask = red_mask;
     screen_info->green_mask = green_mask;
     screen_info->blue_mask = blue_mask;
     screen_info->bytes_per_pixel = bytes_per_pixel;
     screen_info->bytes_per_rgb = bytes_per_rgb;
-    screen_info->buffer = buffer;
+    screen_info->pbuffer = buffer;
 
     // initial reasonable default values for external max rgb values; these
     // can be overridden just before actually reading rgb values from an
@@ -34,11 +34,11 @@ screen_info_rgb_t *init_screen_info_rgb(
     return screen_info;
 }
 
-void update_screen_buffer(screen_info_rgb_t *screen_info, uint8_t *buffer) {
-    screen_info->buffer = buffer;
+void update_screen_pbuffer(screen_info_t *screen_info, uint8_t *buffer) {
+    screen_info->pbuffer = buffer;
 }
 
-uint32_t ext_to_native(screen_info_rgb_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
+uint32_t ext_to_native(screen_info_t *screen_info, uint32_t red, uint32_t green, uint32_t blue) {
     uint32_t red_rescaled, green_rescaled, blue_rescaled;
 
     red_rescaled = red * screen_info->red_max / screen_info->ext_max_red;
@@ -50,7 +50,7 @@ uint32_t ext_to_native(screen_info_rgb_t *screen_info, uint32_t red, uint32_t gr
            | (blue_rescaled<<screen_info->blue_shift);
 }
 
-static void compute_color_resolution(screen_info_rgb_t *screen_info) {
+static void compute_color_resolution(screen_info_t *screen_info) {
     // determine number of bits of resolution for r, g, and b
     // note that the max values go from 0 to xxx_max, meaning the total
     // count (as needed in for loops for instance) is xxx_max+1

@@ -3,7 +3,7 @@
 //#include <X11/Xlib.h>
 //#include <X11/Xutil.h>
 
-//#include "graphics_utils/screen_info_rgb.h"
+//#include "graphics_utils/screen_info.h"
 #include "app/app.h"
 
 static app_t *app;
@@ -18,11 +18,11 @@ void key_event(int key, int action) {
     if (action == KEY_PRESS) {
         switch (key) {
             case KEY_ESC: {
-                terminate_app(app);
+                app_terminate(app);
                 break;
             }
             case KEY_F1: {
-                toggle_fullscreen_app(app);
+                app_toggle_fullscreen(app);
                 break;
             }
         }
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     screen_settings->targetFps = 60;
     screen_settings->show_stats = true;
     screen_settings->fullscreen = false;
-    app = init_app(screen_settings);
-    run_app(app, update, render, key_event);
+    app = app_init(screen_settings);
+    app_run(app, update, render, key_event);
     return 0;
 }

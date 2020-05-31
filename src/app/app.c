@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #include "../graphics_utils/common.h"
-#include "../graphics_utils/screen_info_rgb.h"
+#include "../graphics_utils/screen_info.h"
 #include "../graphics_utils/font.h"
 #include "screen.h"
 #include "app.h"
@@ -18,6 +18,13 @@
 //#define NUM_DELAYS_PER_YIELD 16
 // period between stats updates // 1 sec
 #define UPDATE_STATS_INTERVAL NANO_IN_SEC
+
+static inline int64_t nano_time(void) {
+    struct timespec time;
+//    https://stackoverflow.com/questions/3523442/difference-between-clock-realtime-and-clock-monotonic
+    clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+    return time.tv_sec * NANO_IN_SEC + time.tv_nsec;
+}
 
 typedef struct {
     int64_t start_time;
@@ -42,7 +49,7 @@ struct app {
     uint32_t height;
     bool show_stats;
     // screen_idx x11 ???
-    screen_info_rgb_t *screen_info_rgb;
+    screen_info_t *screen_info_rgb;
     int64_t period; // period between drawing // all times are in _nanosecs_
     stats_t stats;
     bool is_running;
@@ -59,13 +66,13 @@ static void updateStats(app_t *app);
 static void print_final_stats(app_t *app);
 static void show_stats(app_t *app);
 
-app_t *init_app(screen_settings_t *screen_settings) {
+app_t *app_init(screen_settings_t *screen_settings) {
     app_t *app = malloc(sizeof(app_t));
     memset(app, 0, sizeof(app_t));
 
 //    app->screen_settings = screen_settings;
-    app->screen = init_screen(screen_settings);
-    app->screen_info_rgb = get_screen_info(app->screen);
+    app->screen = screen_init(screen_settings);
+    app->screen_info_rgb = screen_get_info(app->screen);
     app->width = screen_settings->width;
     app->height = screen_settings->height;
     app->show_stats = screen_settings->show_stats;
@@ -83,12 +90,12 @@ app_t *init_app(screen_settings_t *screen_settings) {
     return app;
 }
 
-void run_app(app_t *app,
+void app_run(app_t *app,
              fun_update_t update_fun,
              fun_render_t render_fun,
              fun_key_t key_fun) {
 
-    set_key_callback_screen(app->screen, key_fun);
+    screen_set_key_callback(app->screen, key_fun);
 
     int64_t over_sleep_time = 0;
     int64_t excess = 0;
@@ -140,24 +147,24 @@ void run_app(app_t *app,
 
     print_final_stats(app);
 
-    terminate_screen(app->screen);
+    screen_terminate(app->screen);
 
     exit(EXIT_SUCCESS);
 }
 
-void terminate_app(app_t *app) {
+void app_terminate(app_t *app) {
     app->is_running = false;
 }
 
-void toggle_fullscreen_app(app_t *app) {
-    toggle_fullscreen_mode(app->screen);
+void app_toggle_fullscreen(app_t *app) {
+    screen_toggle_fullscreen(app->screen);
 }
 
 /***************************************************************************************/
 // PRIVATE FUNCTIONS
 
 static void update(app_t *app, int64_t elapsed_time) {
-    poll_events_screen(app->screen);
+    screen_poll_events(app->screen);
     app->update_callback(elapsed_time);
 }
 
@@ -171,11 +178,11 @@ static void render(app_t *app) {
     clear_screen(app);
     app->render_callback();
     show_stats(app);
-    blit_screen(app->screen);
+    screen_blit(app->screen);
 }
 
 static void clear_screen(app_t *app) {
-    memset(app->screen_info_rgb->buffer, 255, // 0x00
+    memset(app->screen_info_rgb->pbuffer, 255, // 0x00
             (size_t)app->width * app->height * app->screen_info_rgb->bytes_per_pixel);
 }
 
