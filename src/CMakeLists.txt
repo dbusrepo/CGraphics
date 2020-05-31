@@ -4,7 +4,7 @@ add_subdirectory(graphics_utils)
 add_subdirectory(screen_x11)
 add_subdirectory(app)
 
-add_executable(LinuxGraphics)
+add_executable(LinuxGraphics stb_lib/stb_image_write.h stb_lib/stb_ds.h stb_lib/stb_image_resize.h stb_lib/stb_truetype.h stb_lib/stb_sprintf.h)
 
 target_sources(LinuxGraphics
         PRIVATE

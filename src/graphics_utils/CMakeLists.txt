@@ -1,7 +1,6 @@
 add_library(graphics_utils STATIC "")
 
 file(GLOB SOURCES "*.c")
-
 file(GLOB HEADERS "*.h")
 
 target_sources(graphics_utils
