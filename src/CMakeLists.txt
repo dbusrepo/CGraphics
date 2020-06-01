@@ -3,8 +3,9 @@
 add_subdirectory(graphics_utils)
 add_subdirectory(screen_x11)
 add_subdirectory(app)
+add_subdirectory(_apps/image_loader)
 
-add_executable(LinuxGraphics stb_lib/stb_image_write.h stb_lib/stb_ds.h stb_lib/stb_image_resize.h stb_lib/stb_truetype.h stb_lib/stb_sprintf.h)
+add_executable(LinuxGraphics)
 
 target_sources(LinuxGraphics
         PRIVATE
@@ -22,4 +23,5 @@ target_link_libraries(LinuxGraphics
             graphics_utils
             screen_x11
             app
+            image_loader
         )

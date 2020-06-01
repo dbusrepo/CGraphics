@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 typedef struct screen_settings {
-    char *window_title;
+    const char *window_title;
     uint32_t width;
     uint32_t height;
     int targetFps;
