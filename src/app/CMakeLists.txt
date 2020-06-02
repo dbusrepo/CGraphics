@@ -33,8 +33,8 @@ target_link_libraries(app
 
 foreach (SOURCE ${SOURCES})
     get_filename_component(SOURCE_NAME "${SOURCE}" NAME)
-        add_custom_command(TARGET app
-                POST_BUILD
-                COMMAND make ARGS ${SOURCE_NAME}.s
-                )
-endforeach(SOURCE)
+    add_custom_command(TARGET app
+            POST_BUILD
+            COMMAND make ARGS ${SOURCE_NAME}.s
+            )
+endforeach (SOURCE)

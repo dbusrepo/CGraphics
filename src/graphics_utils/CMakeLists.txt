@@ -24,8 +24,8 @@ target_include_directories(graphics_utils
 
 foreach (SOURCE ${SOURCES})
     get_filename_component(SOURCE_NAME "${SOURCE}" NAME)
-#    add_custom_command(TARGET graphics_utils
-#            POST_BUILD
-#            COMMAND make ARGS ${SOURCE_NAME}.s
-#            )
-endforeach(SOURCE)
+    #    add_custom_command(TARGET graphics_utils
+    #            POST_BUILD
+    #            COMMAND make ARGS ${SOURCE_NAME}.s
+    #            )
+endforeach (SOURCE)

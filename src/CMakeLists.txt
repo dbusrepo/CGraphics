@@ -9,7 +9,7 @@ add_executable(LinuxGraphics)
 
 target_sources(LinuxGraphics
         PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/main.c
+        ${CMAKE_CURRENT_LIST_DIR}/main.c
         )
 
 add_custom_target(graphviz ALL
@@ -20,5 +20,5 @@ add_custom_target(graphviz ALL
 
 target_link_libraries(LinuxGraphics
         PRIVATE
-            image_loader
+        image_loader
         )

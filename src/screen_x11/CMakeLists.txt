@@ -41,4 +41,4 @@ foreach (SOURCE ${SOURCES})
             POST_BUILD
             COMMAND make ARGS ${SOURCE_NAME}.s
             )
-endforeach(SOURCE)
+endforeach (SOURCE)
