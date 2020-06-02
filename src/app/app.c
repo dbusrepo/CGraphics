@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 #include "../graphics_utils/common.h"
-#include "../graphics_utils/screen_info.h"
 #include "../graphics_utils/font.h"
+#include "../graphics_utils/screen_callbacks.h"
 #include "screen.h"
 #include "app.h"
 
@@ -47,24 +47,25 @@ struct app {
 //    screen_settings_t *screen_settings;
     uint32_t width;
     uint32_t height;
-    bool show_stats;
+    bool show_fps;
     // screen_idx x11 ???
     screen_info_t *screen_info_rgb;
     int64_t period; // period between drawing // all times are in _nanosecs_
     stats_t stats;
     bool is_running;
-    fun_update_t update_callback; // refactor name?
-    fun_render_t render_callback;
+
+    fun_update_t update;
+    fun_draw_t draw;
+    fun_finish_t app_finish;
 };
 
-static inline void init_stats(app_t *app);
+static void init_stats(app_t *app);
 static void update(app_t *app, int64_t elapsed_time);
 static void key_event(app_t *app, int key_code);
-static void clear_screen(app_t *app);
 static void render(app_t *app);
 static void updateStats(app_t *app);
 static void print_final_stats(app_t *app);
-static void show_stats(app_t *app);
+static void finish(app_t *app);
 
 app_t *app_init(screen_settings_t *screen_settings) {
     app_t *app = malloc(sizeof(app_t));
@@ -75,12 +76,9 @@ app_t *app_init(screen_settings_t *screen_settings) {
     app->screen_info_rgb = screen_get_info(app->screen);
     app->width = screen_settings->width;
     app->height = screen_settings->height;
-    app->show_stats = screen_settings->show_stats;
+    app->show_fps = screen_settings->show_stats;
     app->period = NANO_IN_SEC / screen_settings->targetFps;
     app->is_running = false;
-
-    app->update_callback = NULL; // refactor name?
-    app->render_callback = NULL;
 
     init_stats(app);
 
@@ -90,19 +88,33 @@ app_t *app_init(screen_settings_t *screen_settings) {
     return app;
 }
 
+screen_info_t *app_get_screen_info(app_t *app) {
+    return app->screen_info_rgb;
+}
+
+uint32_t app_get_width(app_t *app) {
+    return app->width;
+}
+
+uint32_t app_get_height(app_t *app) {
+    return app->height;
+}
+
 void app_run(app_t *app,
              fun_update_t update_fun,
-             fun_render_t render_fun,
+             fun_draw_t draw_fun,
+             fun_finish_t finish_fun,
              fun_key_t key_fun) {
-
-    screen_set_key_callback(app->screen, key_fun);
 
     int64_t over_sleep_time = 0;
     int64_t excess = 0;
     int64_t period = app->period; // save it here
 
-    app->update_callback = update_fun;
-    app->render_callback = render_fun;
+    // save the callbacks
+    app->update = update_fun;
+    app->draw = draw_fun;
+    app->app_finish = finish_fun;
+    screen_set_key_callback(app->screen, key_fun);
 
     int64_t before_time = nano_time();
     app->stats.start_time = before_time;
@@ -122,7 +134,7 @@ void app_run(app_t *app,
             struct timespec sleep_time_s = {0, sleep_time };
             nanosleep(&sleep_time_s, NULL);
             over_sleep_time = (nano_time() - after_time) - sleep_time;
-        } else { // sleepTime <= 0; the render_callback took longer than the period
+        } else { // sleepTime <= 0; the draw took longer than the period
             // print rendering is slowing down?
             excess -= sleep_time; // store excess prev_time value
             over_sleep_time = 0;
@@ -130,12 +142,12 @@ void app_run(app_t *app,
 
         before_time = nano_time();
 
-        /* If render_callback animation is taking too long, update the state
+        /* If draw animation is taking too long, update the state
            without rendering it, to get the updates/sec nearer to
            the required FPS. */
         int skips = 0;
         while ((excess > period) && (skips < MAX_FRAME_SKIPS)) {
-            // update_callback state but don’t render_callback
+            // app_update state but don’t draw
             excess -= period;
             update(app, 0);
             ++skips;
@@ -149,10 +161,11 @@ void app_run(app_t *app,
 
     screen_terminate(app->screen);
 
-    exit(EXIT_SUCCESS);
+    finish(app);
+//    exit(EXIT_SUCCESS);
 }
 
-void app_terminate(app_t *app) {
+void app_stop(app_t *app) {
     app->is_running = false;
 }
 
@@ -160,41 +173,43 @@ void app_toggle_fullscreen(app_t *app) {
     screen_toggle_fullscreen(app->screen);
 }
 
+void app_clear_screen(app_t *app) {
+    memset(app->screen_info_rgb->pbuffer, 0,
+            app->width * app->height * app->screen_info_rgb->bytes_per_pixel);
+}
+
+void app_show_fps(app_t *app, int x, int y) {
+    if (app->show_fps) {
+        static char buf[128];
+        snprintf(buf, 128, "FPS UPS %.0f %.0f",
+                 app->stats.average_fps,
+                 app->stats.average_ups);
+        draw_text(app->screen_info_rgb, app->width, app->height, x, y, buf);
+    }
+}
+
 /***************************************************************************************/
 // PRIVATE FUNCTIONS
 
-static void update(app_t *app, int64_t elapsed_time) {
-    screen_poll_events(app->screen);
-    app->update_callback(elapsed_time);
+static void finish(app_t *app) {
+    app->app_finish();
 }
 
-static inline void init_stats(app_t *app) {
+static void update(app_t *app, int64_t elapsed_time) {
+    screen_poll_events(app->screen);
+    app->update(elapsed_time);
+}
+
+static void init_stats(app_t *app) {
     // https://stackoverflow.com/questions/6891720/initialize-reset-struct-to-zero-null
     static const stats_t empty_stats = { 0 };
     app->stats = empty_stats;
 }
 
 static void render(app_t *app) {
-    clear_screen(app);
-    app->render_callback();
-    show_stats(app);
+    app->draw();
+//    app_show_fps(app);
     screen_blit(app->screen);
-}
-
-static void clear_screen(app_t *app) {
-    memset(app->screen_info_rgb->pbuffer, 255, // 0x00
-            (size_t)app->width * app->height * app->screen_info_rgb->bytes_per_pixel);
-}
-
-static void show_stats(app_t *app) {
-    if (app->show_stats) {
-#define BUFFER_SIZE 256
-        static char buf[BUFFER_SIZE];
-        snprintf(buf, BUFFER_SIZE, "FPS UPS %.0f %.0f",
-                 app->stats.average_fps,
-                 app->stats.average_ups);
-        draw_text(app->screen_info_rgb, app->width, app->height, 1, 3, buf);
-    }
 }
 
 static void updateStats(app_t *app) {

@@ -20,8 +20,5 @@ add_custom_target(graphviz ALL
 
 target_link_libraries(LinuxGraphics
         PRIVATE
-            graphics_utils
-            screen_x11
-            app
             image_loader
         )

@@ -26,6 +26,7 @@ target_compile_options(${_APP}
 target_link_libraries(${_APP}
         PRIVATE
         app
+        m # math lib
         )
 
 foreach (SOURCE ${SOURCES})

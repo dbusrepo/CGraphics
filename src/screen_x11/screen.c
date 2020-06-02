@@ -429,7 +429,7 @@ static void get_cursor_pos(screen_x11_t *screen, int *windowX, int *windowY) {
                   &mask);
 
 //    flush_printf("Root_: %d Win_: %d", root, window);
-    flush_printf("Cursor:[R:%d,%d][Win:%d,%d]\n", rootX, rootY, *windowX, *windowY);
+//    flush_printf("Cursor:[R:%d,%d][Win:%d,%d]\n", rootX, rootY, *windowX, *windowY);
 }
 
 void center_window(screen_x11_t *screen) {
@@ -562,7 +562,7 @@ screen_info_t *screen_get_info(screen_x11_t *screen) {
 
 void screen_terminate(screen_x11_t *screen) {
     // vedi _glfwPlatformCloseWindow
-    printf("\nexiting...\n");
+//    printf("\nexiting...\n");
 
     if (screen->fullscreen) {
         printf("leaving full screen...\n");
@@ -1461,7 +1461,7 @@ static bool process_single_event(screen_x11_t *screen) {
     // if or while?
     switch (event.type) {
         case KeyPress: { // A keyboard key was pressed
-            flush_printf("key pressed...\n");
+//            flush_printf("key pressed...\n");
             // Translate and report key press
             input_key(screen, translate_key(screen, event.xkey.keycode), KEY_PRESS);
 
