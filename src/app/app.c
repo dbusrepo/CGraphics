@@ -54,9 +54,7 @@ struct app {
     stats_t stats;
     bool is_running;
 
-    fun_update_t update;
-    fun_draw_t draw;
-    fun_finish_t app_finish;
+    app_callbacks_t cbs;
 };
 
 static void init_stats(app_t *app);
@@ -66,6 +64,7 @@ static void render(app_t *app);
 static void updateStats(app_t *app);
 static void print_final_stats(app_t *app);
 static void finish(app_t *app);
+static void init_callbacks(app_t *app, app_callbacks_t *cbs);
 
 app_t *app_init(screen_settings_t *screen_settings) {
     app_t *app = malloc(sizeof(app_t));
@@ -100,21 +99,15 @@ uint32_t app_get_height(app_t *app) {
     return app->height;
 }
 
-void app_run(app_t *app,
-             fun_update_t update_fun,
-             fun_draw_t draw_fun,
-             fun_finish_t finish_fun,
-             fun_key_t key_fun) {
+void app_run(app_t *app, app_callbacks_t *cbs) {
 
     int64_t over_sleep_time = 0;
     int64_t excess = 0;
     int64_t period = app->period; // save it here
 
     // save the callbacks
-    app->update = update_fun;
-    app->draw = draw_fun;
-    app->app_finish = finish_fun;
-    screen_set_key_callback(app->screen, key_fun);
+    init_callbacks(app, cbs);
+    screen_set_key_callback(app->screen, app->cbs.key_fun);
 
     int64_t before_time = nano_time();
     app->stats.start_time = before_time;
@@ -157,11 +150,11 @@ void app_run(app_t *app,
         updateStats(app);
     }
 
-    print_final_stats(app);
-
     screen_terminate(app->screen);
 
     finish(app);
+
+    print_final_stats(app);
 //    exit(EXIT_SUCCESS);
 }
 
@@ -192,12 +185,12 @@ void app_show_fps(app_t *app, int x, int y) {
 // PRIVATE FUNCTIONS
 
 static void finish(app_t *app) {
-    app->app_finish();
+    app->cbs.finish();
 }
 
 static void update(app_t *app, int64_t elapsed_time) {
     screen_poll_events(app->screen);
-    app->update(elapsed_time);
+    app->cbs.update(elapsed_time);
 }
 
 static void init_stats(app_t *app) {
@@ -207,7 +200,7 @@ static void init_stats(app_t *app) {
 }
 
 static void render(app_t *app) {
-    app->draw();
+    app->cbs.draw();
 //    app_show_fps(app);
     screen_blit(app->screen);
 }
@@ -253,17 +246,33 @@ static void updateStats(app_t *app) {
 
 static void print_final_stats(app_t *app) {
     stats_t *stats = &app->stats;
-    printf("\n***Final stats:***\n"
+    printf("\n\n***Final stats:***\n"
            "Frame Count/Loss: %" PRId64 "/" "%"PRId64 "\n"
            "Average FPS: %.2f\n"
            "Average UPS: %.2f\n"
            "Time spent: %" PRId64 "s"
-           "\n",
+           "\n\n",
            stats->frame_counter, stats->total_frame_skips,
            stats->average_fps, stats->average_ups,
            stats->total_elapsed_time / NANO_IN_SEC
     );
+    app->cbs.print_final_stats();
 //    https://stackoverflow.com/questions/12450066/flushing-buffers-in-c
 //    fflush(stdout);
+}
+
+// default empty functions
+static void default_key_event(int key, int action) {}
+static void default_update(int64_t elapsed_time) {}
+static void default_draw(void) {}
+static void default_finish(void) {}
+static void default_print_final_stats() {}
+
+static void init_callbacks(app_t *app, app_callbacks_t *cbs) {
+    app->cbs.key_fun = cbs->key_fun != NULL ? cbs->key_fun : default_key_event;
+    app->cbs.update = cbs->update != NULL ? cbs->update : default_update;
+    app->cbs.draw = cbs->draw != NULL ? cbs->draw : default_draw;
+    app->cbs.finish = cbs->finish != NULL ? cbs->finish : default_finish;
+    app->cbs.print_final_stats = cbs->print_final_stats != NULL ? cbs->print_final_stats : default_draw;
 }
 

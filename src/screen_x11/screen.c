@@ -177,6 +177,8 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings) {
 
 //    screen_start_time = nano_time();
 
+    printf("\nInit screen x11...\n");
+
     screen_x11_t *screen = malloc(sizeof(screen_x11_t));
     memset(screen, 0, sizeof(screen_x11_t));
 
@@ -202,8 +204,8 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings) {
         }
     }
     XFree(pixmap_formats);
-    printf("default depth of display %d\n", screen->depth);
-    printf("bytes per pixel: %d\n", screen->bytespp);
+    printf("Default depth of display %d\n", screen->depth);
+    printf("Bytes per pixel: %d\n", screen->bytespp);
 
 //    // create and map (display) an X window for output
 //    int count_screens = ScreenCount(screen->display);
@@ -259,7 +261,7 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings) {
             XVisualInfo vi;
             int result = XMatchVisualInfo(screen->display, screen->screen_idx, (int32_t) screen->depth, TrueColor, &vi);
             if (result) {
-                printf("visual is TrueColor, %d bytes per pix, %d bytes per rgb\n",
+                printf("Visual is TrueColor, %d bytes per pix, %d bytes per rgb\n",
                        screen->bytespp,
                        vi.depth / BITS_PER_BYTE);
                 //                sinfo = new l3d_screen_info_rgb(vis->red_mask, vis->green_mask, vis->blue_mask, bytespp, vi.default_depth / BITS_PER_BYTE);
@@ -369,6 +371,9 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings) {
 //    struct timespec sleep_time_s = {2, 0 };
 //    nanosleep(&sleep_time_s, NULL);
 //    exit(1);
+
+    printf("\n");
+    fflush(stdout);
 
     return screen;
 }

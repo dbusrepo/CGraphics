@@ -6,7 +6,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_lib/stb_image.h"
 
-#define IMAGE_FILE "images/img0.jpg"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../stb_lib/stb_image_write.h"
+
+#define IMAGE_FILE_IN "images/img0.jpg"
+#define IMAGE_FILE_OUT "images/out.png"
 
 typedef struct {
     app_t *app;
@@ -35,9 +39,9 @@ static void image_loader_init() {
     image_loader->app = app_init(screen_settings);
 
     int x,y,n;
-    uint8_t *data = stbi_load(IMAGE_FILE, &x, &y, &n, 4); // force 4 channels
+    uint8_t *data = stbi_load(IMAGE_FILE_IN, &x, &y, &n, 4); // force 4 channels
     if (data == NULL) {
-        printf("Error loading image %s\nExiting...", IMAGE_FILE);
+        printf("Error loading image %s\nExiting...", IMAGE_FILE_IN);
         exit(1);
     }
     convert_bgr_to_rgb(data, x, y, 4);
@@ -123,12 +127,26 @@ static void key_event(int key, int action) {
 }
 
 static void finish(void) {
-
+    // back to bgr...
+    convert_bgr_to_rgb(image_loader->image, image_loader->w, image_loader->h, image_loader->n);
+    if (!stbi_write_png(IMAGE_FILE_OUT, image_loader->w, image_loader->h, image_loader->n, image_loader->image,
+            image_loader->w*image_loader->n)) {
+        printf("Error writing image %s\nExiting...", IMAGE_FILE_OUT);
+        exit(1);
+    }
+    printf("File %s written.", IMAGE_FILE_OUT);
 }
 
 int image_loader_run() {
-    printf("Launching Image loader\n");
+    printf("Launching Image loader...\n");
     image_loader_init();
-    app_run(image_loader->app, update, draw, finish, key_event);
+
+    app_callbacks_t *cbs = malloc(sizeof(app_callbacks_t));
+    cbs->key_fun = key_event;
+    cbs->update = update;
+    cbs->draw = draw;
+    cbs->finish = finish;
+    cbs->print_final_stats = NULL;
+    app_run(image_loader->app, cbs);
     return 0;
 }

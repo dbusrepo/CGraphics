@@ -8,16 +8,21 @@ typedef void (*fun_update_t)(int64_t elapsed_time);
 typedef void (*fun_draw_t)(void);
 typedef void (*fun_finish_t)(void);
 typedef void (*fun_key_t)(int key, int action);
+typedef void (*fun_print_final_stats_t)(void);
+
+typedef struct {
+    fun_key_t key_fun;
+    fun_update_t update;
+    fun_draw_t draw;
+    fun_finish_t finish;
+    fun_print_final_stats_t print_final_stats;
+} app_callbacks_t;
 
 typedef struct app app_t;
 
 app_t *app_init(screen_settings_t *screen_settings);
 
-void app_run(app_t *app,
-             fun_update_t update_fun,
-             fun_draw_t draw_fun,
-             fun_finish_t finish_fun,
-             fun_key_t key_fun);
+void app_run(app_t *app, app_callbacks_t *cbs);
 
 screen_info_t *app_get_screen_info(app_t *app);
 
