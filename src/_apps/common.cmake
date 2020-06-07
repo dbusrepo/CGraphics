@@ -1,5 +1,4 @@
 #add_library(${APP_EXE} STATIC "")
-add_executable(${APP_EXE})
 
 file(GLOB SOURCES "*.c")
 file(GLOB HEADERS "*.h")
