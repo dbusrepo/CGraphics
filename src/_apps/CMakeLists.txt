@@ -1,6 +1,7 @@
 #PRINT_CUR_BINARY_DIR()
 
 add_subdirectory(image_loader)
+add_subdirectory(ray_tracer)
 
 #add_executable(LinuxGraphics)
 #
