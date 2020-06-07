@@ -29,7 +29,6 @@ set(MY_ICC_OPTIONS -w3 -diag-disable:remark -Wall -Warray-bounds -Wchar-subscrip
 #-pedantic-errors
 
 
-
 #https://stackoverflow.com/questions/10046114/in-cmake-how-can-i-test-if-the-compiler-is-clang
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
     # using GCC

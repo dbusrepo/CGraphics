@@ -4,7 +4,8 @@
 
 set(_APP "image_loader")
 
-add_library(${_APP} STATIC "")
+#add_library(${_APP} STATIC "")
+add_executable(${_APP})
 
 file(GLOB SOURCES "*.c")
 file(GLOB HEADERS "*.h")
