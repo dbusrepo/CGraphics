@@ -9,7 +9,7 @@
 #include "screen.h"
 #include "app.h"
 
-// number of FPS values stored to get an average
+// number of FPS values stored to get an rgb_average
 #define NUM_AVG_FPS 20
 // no. of frames that can be skipped in any one animation loop MAX_EXEC_SECONDS.e the state is updated but not rendered
 #define MAX_FRAME_SKIPS 5
@@ -236,7 +236,7 @@ static void updateStats(app_t *app)
 		stats->fps_values[stats->count % NUM_AVG_FPS] = actual_fps;
 		stats->ups_values[stats->count % NUM_AVG_FPS] = actual_ups;
 		++stats->count;
-		// obtain the average fps and ups
+		// obtain the rgb_average fps and ups
 		double total_fps = 0.0;
 		double total_ups = 0.0;
 		for (int i = 0; i != NUM_AVG_FPS; i++) {

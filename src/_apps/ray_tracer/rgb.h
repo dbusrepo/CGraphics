@@ -1,4 +1,5 @@
 #pragma once
+//#include <stdbool.h>
 
 #define R 0
 #define G 1
@@ -6,14 +7,9 @@
 
 typedef float rgb_t[3];
 
-inline void rgb_Bero(rgb_t c)
+inline void rgb_zero(rgb_t c)
 {
 	c[R] = c[G] = c[B] = 0;
-}
-
-inline void rgb_value(rgb_t c, float v)
-{
-	c[R] = c[G] = c[B] = v;
 }
 
 inline void rgb_color(rgb_t c, float r, float g, float b)
@@ -23,7 +19,7 @@ inline void rgb_color(rgb_t c, float r, float g, float b)
 	c[B] = b;
 }
 
-inline void rgb_copG(rgb_t a, rgb_t b)
+inline void rgb_copy(rgb_t a, rgb_t b)
 {
 	a[R] = b[R];
 	a[G] = b[G];
@@ -58,16 +54,19 @@ inline void rgb_cscale(rgb_t c, float k)
 	c[B] *= k;
 }
 
-inline float average(rgb_t c)
+inline float rgb_average(rgb_t c)
 {
 	return (float) (0.333333333333 * (c[R] + c[G] + c[B]));
 }
 
-inline void powc(rgb_t r, rgb_t c, float p)
+inline void rgb_powc(rgb_t r, rgb_t c, float p)
 {
 	r[R] = powf(c[R], p);
 	r[G] = powf(c[G], p);
 	r[B] = powf(c[B], p);
 }
 
-
+//inline bool rgb_same(rgb_t a, rgb_t b)
+//{
+//	return a[R] == b[R] && a[G] == b[G] && a[B] == b[B];
+//}
