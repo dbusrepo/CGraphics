@@ -7,174 +7,185 @@
 
 typedef float real;
 
-typedef real vec2_t[2];
-typedef real vec3_t[3];
+struct vec2
+{
+	real x, y;
+};
+
+typedef struct vec2 vec2_t;
+
+struct vec3
+{
+	real x, y, z;
+};
+
+typedef struct vec3 vec3_t;
 
 /**** vec2_t ****/
 
-inline void vec2_zero(vec2_t v)
+inline void vec2_zero(vec2_t *v)
 {
-	v[X] = v[Y] = 0;
+	v->x = v->y = 0;
 }
 
-inline void vec2_init(vec2_t v, real vx, real vy)
+inline void vec2_init(vec2_t *v, real vx, real vy)
 {
-	v[X] = vx;
-	v[Y] = vy;
+	v->x = vx;
+	v->y = vy;
 }
 
-inline void vec2_copy(vec2_t a, vec2_t b)
+inline void vec2_copy(vec2_t *a, vec2_t *b)
 {
-	a[X] = b[X];
-	a[Y] = b[Y];
+	a->x = b->x;
+	a->y = b->y;
 }
 
-inline void vec2_negate(vec2_t r, vec2_t v)
+inline void vec2_negate(vec2_t *r, vec2_t *v)
 {
-	r[X] = -v[X];
-	r[Y] = -v[Y];
+	r->x = -v->x;
+	r->y = -v->y;
 }
 
-inline void vec2_add(vec2_t r, vec2_t a, vec2_t b)
+inline void vec2_add(vec2_t *r, vec2_t *a, vec2_t *b)
 {
-	r[X] = a[X] + b[X];
-	r[Y] = a[Y] + b[Y];
+	r->x = a->x + b->x;
+	r->y = a->y + b->y;
 }
 
-inline void vec2_sub(vec2_t r, vec2_t a, vec2_t b)
+inline void vec2_sub(vec2_t *r, vec2_t *a, vec2_t *b)
 {
-	r[X] = a[X] - b[X];
-	r[Y] = a[Y] - b[Y];
+	r->x = a->x - b->x;
+	r->y = a->y - b->y;
 }
 
-inline void vec2_scale(vec2_t r, vec2_t v, real k)
+inline void vec2_scale(vec2_t *r, vec2_t *v, real k)
 {
-	r[X] = k * v[X];
-	r[Y] = k * v[Y];
+	r->x = k * v->x;
+	r->y = k * v->y;
 }
 
-inline real vec2_dot(vec2_t a, vec2_t b)
+inline real vec2_dot(vec2_t *a, vec2_t *b)
 {
-	return a[X] * b[X] + a[Y] * b[Y];
+	return a->x * b->x + a->y * b->y;
 }
 
-inline real vec2_len_squared(vec2_t v)
+inline real vec2_len_squared(vec2_t *v)
 {
 	return vec2_dot(v, v);
 }
 
-inline void vec2_normal(vec2_t n, vec2_t v)
+inline void vec2_normal(vec2_t *n, vec2_t *v)
 {
-	n[X] = -v[Y];
-	n[Y] = v[X];
+	n->x = -v->y;
+	n->y = v->x;
 }
 
-inline void vec2_linear_comb(vec2_t r, vec2_t p, vec2_t pq, real lambda)
+inline void vec2_linear_comb(vec2_t *r, vec2_t *p, vec2_t *pq, real lambda)
 {
-	r[X] = p[X] + lambda * pq[X];
-	r[Y] = p[Y] + lambda * pq[Y];
+	r->x = p->x + lambda * pq->x;
+	r->y = p->y + lambda * pq->y;
 }
 
-inline void vec2_point_on_line(vec2_t r, vec2_t p, vec2_t q, real lambda)
+inline void vec2_point_on_line(vec2_t *r, vec2_t *p, vec2_t *q, real lambda)
 {
-	r[X] = p[X] + lambda * (q[X] - p[X]);
-	r[Y] = p[Y] + lambda * (q[Y] - p[Y]);
+	r->x = p->x + lambda * (q->x - p->x);
+	r->y = p->y + lambda * (q->y - p->y);
 }
 
-/**** vec3_t ****/
+/**** vec3_t  * ****/
 
-inline void vec3_zero(vec3_t v)
+inline void vec3_zero(vec3_t *v)
 {
-	v[X] = v[Y] = v[Z] = 0;
+	v->x = v->y = v->z = 0;
 }
 
-inline void vec3_init(vec3_t v, real vx, real vy, real vz)
+inline void vec3_init(vec3_t *v, real vx, real vy, real vz)
 {
-	v[X] = vx;
-	v[Y] = vy;
-	v[Z] = vz;
+	v->x = vx;
+	v->y = vy;
+	v->z = vz;
 }
 
-inline void vec3_copy(vec3_t a, vec3_t b)
+inline void vec3_copy(vec3_t *a, vec3_t *b)
 {
-	a[X] = b[X];
-	a[Y] = b[Y];
-	a[Z] = b[Z];
+	a->x = b->x;
+	a->y = b->y;
+	a->z = b->z;
 }
 
-inline void vec3_sub(vec3_t r, vec3_t a, vec3_t b)
+inline void vec3_sub(vec3_t *r, vec3_t *a, vec3_t *b)
 {
-	r[X] = a[X] - b[X];
-	r[Y] = a[Y] - b[Y];
-	r[Z] = a[Z] - b[Z];
+	r->x = a->x - b->x;
+	r->y = a->y - b->y;
+	r->z = a->z - b->z;
 }
 
-inline void vec3_add(vec3_t r, vec3_t a, vec3_t b)
+inline void vec3_add(vec3_t *r, vec3_t *a, vec3_t *b)
 {
-	r[X] = a[X] + b[X];
-	r[Y] = a[Y] + b[Y];
-	r[Z] = a[Z] + b[Z];
+	r->x = a->x + b->x;
+	r->y = a->y + b->y;
+	r->z = a->z + b->z;
 }
 
-inline void vec3_cadd(vec3_t a, vec3_t b) // compound addition
+inline void vec3_cadd(vec3_t *a, vec3_t *b) // compound addition
 {
-	a[X] += b[X];
-	a[Y] += b[Y];
-	a[Z] += b[Z];
+	a->x += b->x;
+	a->y += b->y;
+	a->z += b->z;
 }
 
-inline void vec3_scale(vec3_t r, vec3_t v, real k)
+inline void vec3_scale(vec3_t *r, vec3_t *v, real k)
 {
-	r[X] = k * v[X];
-	r[Y] = k * v[Y];
-	r[Z] = k * v[Z];
+	r->x = k * v->x;
+	r->y = k * v->y;
+	r->z = k * v->z;
 }
 
-inline void vec3_negate(vec3_t r, vec3_t v)
+inline void vec3_negate(vec3_t *r, vec3_t *v)
 {
-	r[X] = -v[X];
-	r[Y] = -v[Y];
-	r[Z] = -v[Z];
+	r->x = -v->x;
+	r->y = -v->y;
+	r->z = -v->z;
 }
 
-inline real vec3_dot(vec3_t a, vec3_t b)
+inline real vec3_dot(vec3_t *a, vec3_t *b)
 {
-	return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];
+	return a->x * b->x + a->y * b->y + a->z * b->z;
 }
 
-inline real vec3_len_squared(vec3_t v)
+inline real vec3_len_squared(vec3_t *v)
 {
 	return vec3_dot(v, v);
 }
 
-inline real vec3_length(vec3_t v)
+inline real vec3_length(vec3_t *v)
 {
 	return (real) sqrt((double) vec3_dot(v, v));
 }
 
-inline void vec3_cross(vec3_t r, vec3_t a, vec3_t b)
+inline void vec3_cross(vec3_t *r, vec3_t *a, vec3_t *b)
 {
-	r[X] = a[Y] * b[Z] - a[Z] * b[Y];
-	r[Y] = a[Z] * b[X] - a[X] * b[Z];
-	r[Z] = a[X] * b[Y] - a[Y] * b[X];
+	r->x = a->y * b->z - a->z * b->y;
+	r->y = a->z * b->x - a->x * b->z;
+	r->z = a->x * b->y - a->y * b->x;
 }
 
-inline void vec3_normalize(vec3_t v)
+inline void vec3_normalize(vec3_t *v)
 {
 	real length = vec3_length(v);
 	vec3_scale(v, v, 1 / length);
 }
 
-inline void vec3_linear_comb(vec3_t r, vec3_t p, vec3_t pq, real lambda)
+inline void vec3_linear_comb(vec3_t *r, vec3_t *p, vec3_t *pq, real lambda)
 {
-	r[X] = p[X] + lambda * pq[X];
-	r[Y] = p[Y] + lambda * pq[Y];
-	r[Z] = p[Z] + lambda * pq[Z];
+	r->x = p->x + lambda * pq->x;
+	r->y = p->y + lambda * pq->y;
+	r->z = p->z + lambda * pq->z;
 }
 
-inline void vec3_point_on_line(vec3_t r, vec3_t p, vec3_t q, real lambda)
+inline void vec3_point_on_line(vec3_t *r, vec3_t *p, vec3_t *q, real lambda)
 {
-	r[X] = p[X] + lambda * (q[X] - p[X]);
-	r[Y] = p[Y] + lambda * (q[Y] - p[Y]);
-	r[Z] = p[Z] + lambda * (q[Z] - p[Z]);
+	r->x = p->x + lambda * (q->x - p->x);
+	r->y = p->y + lambda * (q->y - p->y);
+	r->z = p->z + lambda * (q->z - p->z);
 }

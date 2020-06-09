@@ -1,72 +1,73 @@
 #pragma once
 //#include <stdbool.h>
 
-#define R 0
-#define G 1
-#define B 2
-
-typedef float rgb_t[3];
-
-inline void rgb_zero(rgb_t c)
+struct rgb
 {
-	c[R] = c[G] = c[B] = 0;
+	float r, g, b;
+};
+
+typedef struct rgb rgb_t;
+
+inline void rgb_zero(rgb_t *c)
+{
+	c->r = c->g = c->b = 0;
 }
 
-inline void rgb_color(rgb_t c, float r, float g, float b)
+inline void rgb_color(rgb_t *c, float r, float g, float b)
 {
-	c[R] = r;
-	c[G] = g;
-	c[B] = b;
+	c->r = r;
+	c->g = g;
+	c->b = b;
 }
 
-inline void rgb_copy(rgb_t a, rgb_t b)
+inline void rgb_copy(rgb_t *a, rgb_t *b)
 {
-	a[R] = b[R];
-	a[G] = b[G];
-	a[B] = b[B];
+	a->r = b->r;
+	a->g = b->g;
+	a->b = b->b;
 }
 
-inline void rgb_add(rgb_t r, rgb_t a, rgb_t b)
+inline void rgb_add(rgb_t *r, rgb_t *a, rgb_t *b)
 {
-	r[R] = a[R] + b[R];
-	r[G] = a[G] + b[G];
-	r[B] = a[B] + b[B];
+	r->r = a->r + b->r;
+	r->g = a->g + b->g;
+	r->b = a->b + b->b;
 }
 
-inline void rgb_cadd(rgb_t a, rgb_t b) // compound addition
+inline void rgb_cadd(rgb_t *a, rgb_t *b) // compound addition
 {
-	a[R] += b[R];
-	a[G] += b[G];
-	a[B] += b[B];
+	a->r += b->r;
+	a->g += b->g;
+	a->b += b->b;
 }
 
-inline void rgb_scale(rgb_t r, rgb_t c, float k)
+inline void rgb_scale(rgb_t *r, rgb_t *c, float k)
 {
-	r[R] = k * c[R];
-	r[G] = k * c[G];
-	r[B] = k * c[B];
+	r->r = k * c->r;
+	r->g = k * c->g;
+	r->b = k * c->b;
 }
 
-inline void rgb_cscale(rgb_t c, float k)
+inline void rgb_cscale(rgb_t *c, float k)
 {
-	c[R] *= k;
-	c[G] *= k;
-	c[B] *= k;
+	c->r *= k;
+	c->g *= k;
+	c->b *= k;
 }
 
-inline float rgb_average(rgb_t c)
+inline float rgb_average(rgb_t *c)
 {
-	return (float) (0.333333333333 * (c[R] + c[G] + c[B]));
+	return (float) (0.333333333333 * (c->r + c->g + c->b));
 }
 
-inline void rgb_powc(rgb_t r, rgb_t c, float p)
+inline void rgb_powc(rgb_t *r, rgb_t *c, float p)
 {
-	r[R] = powf(c[R], p);
-	r[G] = powf(c[G], p);
-	r[B] = powf(c[B], p);
+	r->r = powf(c->r, p);
+	r->g = powf(c->g, p);
+	r->b = powf(c->b, p);
 }
 
-//inline bool rgb_same(rgb_t a, rgb_t b)
+//inline bool rgb_same(rgb_t *a, rgb_t *b)
 //{
-//	return a[R] == b[R] && a[G] == b[G] && a[B] == b[B];
+//	return a->r == b->r && a->g == b->g && a->b == b->b;
 //}
