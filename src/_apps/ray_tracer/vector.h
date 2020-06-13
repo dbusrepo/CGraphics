@@ -2,6 +2,7 @@
 #include <math.h>
 #include "assert.h"
 #include "real.h"
+#include "normal.h"
 
 struct vec2
 {
@@ -102,6 +103,11 @@ inline void vec3_init(vec3_t *v, real vx, real vy, real vz)
 	v->z = vz;
 }
 
+inline void vec3_from_normal(vec3_t *v, normal_t *n)
+{
+	vec3_init(v, n->x, n->y, n->z);
+}
+
 inline void vec3_copy(vec3_t *a, vec3_t *b)
 {
 	a->x = b->x;
@@ -187,4 +193,26 @@ inline void vec3_point_on_line(vec3_t *r, vec3_t *p, vec3_t *q, real lambda)
 	r->x = p->x + lambda * (q->x - p->x);
 	r->y = p->y + lambda * (q->y - p->y);
 	r->z = p->z + lambda * (q->z - p->z);
+}
+
+/* normal & vec */
+
+inline void vec3_normal_add(vec3_t *r, vec3_t *v, normal_t *n)
+{
+	r->x = n->x + v->x;
+	r->y = n->y + v->y;
+	r->z = n->z + v->z;
+}
+
+inline void vec3_normal_sub(vec3_t *r, vec3_t *v, normal_t *n)
+{
+	r->x = v->x - n->x;
+	r->y = v->y - n->y;
+	r->z = v->z - n->z;
+}
+
+// dot product of v vector and n normal
+inline real vec3_normal_dot(vec3_t *v, normal_t *n)
+{
+	return v->x * n->x + v->y * n->y + v->z * n->z;
 }

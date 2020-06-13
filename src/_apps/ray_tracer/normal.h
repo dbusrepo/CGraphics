@@ -72,25 +72,3 @@ inline void normal_normalize(normal_t *n)
 	n->z /= len;
 }
 
-/* normal & vec */
-
-inline void vec3_normal_add(vec3_t *r, vec3_t *v, normal_t *n)
-{
-	r->x = n->x + v->x;
-	r->y = n->y + v->y;
-	r->z = n->z + v->z;
-}
-
-inline void vec3_normal_sub(vec3_t *r, vec3_t *v, normal_t *n)
-{
-	r->x = v->x - n->x;
-	r->y = v->y - n->y;
-	r->z = v->z - n->z;
-}
-
-// dot product of n normal on the left and n vector on the right
-inline real vec3_normal_dot(vec3_t *n, normal_t *v)
-{
-	return n->x * v->x + n->y * v->y + n->z * v->z;
-}
-
