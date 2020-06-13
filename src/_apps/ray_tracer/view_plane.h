@@ -29,5 +29,5 @@ inline void view_plane_init(view_plane_t *view_plane)
 inline void view_plane_set_gamma(view_plane_t *view_plane, float g)
 {
 	view_plane->gamma = g;
-	view_plane->inv_gamma = 1.0 / g;
+	view_plane->inv_gamma = 1.0f / g;
 }

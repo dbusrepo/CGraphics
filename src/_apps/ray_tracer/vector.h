@@ -1,11 +1,7 @@
 #pragma once
 #include <math.h>
-
-#define X 0
-#define Y 1
-#define Z 2
-
-typedef float real;
+#include "assert.h"
+#include "real.h"
 
 struct vec2
 {
@@ -92,7 +88,7 @@ inline void vec2_point_on_line(vec2_t *r, vec2_t *p, vec2_t *q, real lambda)
 	r->y = p->y + lambda * (q->y - p->y);
 }
 
-/**** vec3_t  * ****/
+/**** vec3_t ****/
 
 inline void vec3_zero(vec3_t *v)
 {
@@ -160,7 +156,7 @@ inline real vec3_len_squared(vec3_t *v)
 
 inline real vec3_length(vec3_t *v)
 {
-	return (real) sqrt((double) vec3_dot(v, v));
+	return (real) sqrt(vec3_dot(v, v));
 }
 
 inline void vec3_cross(vec3_t *r, vec3_t *a, vec3_t *b)
@@ -172,8 +168,11 @@ inline void vec3_cross(vec3_t *r, vec3_t *a, vec3_t *b)
 
 inline void vec3_normalize(vec3_t *v)
 {
-	real length = vec3_length(v);
-	vec3_scale(v, v, 1 / length);
+	real len = vec3_length(v);
+	assert(len >= EPS);
+	v->x /= len;
+	v->y /= len;
+	v->z /= len;
 }
 
 inline void vec3_linear_comb(vec3_t *r, vec3_t *p, vec3_t *pq, real lambda)
