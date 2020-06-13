@@ -1,6 +1,5 @@
 #pragma once
 #include "real.h"
-#include "vector.h"
 
 struct normal
 {

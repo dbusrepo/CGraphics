@@ -2,7 +2,11 @@
 #include <math.h>
 #include "assert.h"
 #include "real.h"
+#include "vector3.r"
 #include "normal.h"
+#include "point.h"
+
+/**** vec2_t ****/
 
 struct vec2
 {
@@ -10,15 +14,6 @@ struct vec2
 };
 
 typedef struct vec2 vec2_t;
-
-struct vec3
-{
-	real x, y, z;
-};
-
-typedef struct vec3 vec3_t;
-
-/**** vec2_t ****/
 
 inline void vec2_zero(vec2_t *v)
 {
@@ -106,6 +101,11 @@ inline void vec3_init(vec3_t *v, real vx, real vy, real vz)
 inline void vec3_from_normal(vec3_t *v, normal_t *n)
 {
 	vec3_init(v, n->x, n->y, n->z);
+}
+
+inline void vec3_from_point3(vec3_t *v, point3_t *p)
+{
+	vec3_init(v, p->x, p->y, p->z);
 }
 
 inline void vec3_copy(vec3_t *a, vec3_t *b)

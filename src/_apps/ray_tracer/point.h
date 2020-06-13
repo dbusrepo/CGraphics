@@ -1,7 +1,7 @@
 #pragma once
 #include <math.h>
 #include "real.h"
-#include "vector.h"
+#include "vector3.r"
 
 struct point3
 {
