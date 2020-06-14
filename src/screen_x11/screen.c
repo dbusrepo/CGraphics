@@ -290,7 +290,7 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings)
 			XVisualInfo vi;
 			int result = XMatchVisualInfo(screen->display, screen->screen_idx, (int32_t) screen->depth, TrueColor, &vi);
 			if (result) {
-				printf("Visual is TrueColor, %d bytes per pix, %d bytes per rgb\n",
+				printf("Visual is TrueColor, %d bytes per pix, %d bytes per rgb_init\n",
 				       screen->bytespp,
 				       vi.depth / BITS_PER_BYTE);
 				//                sinfo = new l3d_screen_info_rgb(vis->red_mask, vis->green_mask, vis->blue_mask, bytespp, vi.default_depth / BITS_PER_BYTE);

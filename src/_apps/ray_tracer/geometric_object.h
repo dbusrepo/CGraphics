@@ -1,5 +1,5 @@
 #pragma once
-#include "rgb.h"
+#include "rgb_color.h"
 
 struct geometric_object_vtable
 {
@@ -8,6 +8,6 @@ struct geometric_object_vtable
 
 struct geometric_object
 {
-	rgb_t color;    // only used for Bare Bones ray tracing
+	rgb_color_t color;    // only used for Bare Bones ray tracing
 };
 

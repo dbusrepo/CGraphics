@@ -1,3 +1,2 @@
+#include "world.h"
 
-
-typedef int world;

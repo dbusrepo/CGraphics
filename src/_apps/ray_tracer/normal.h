@@ -1,5 +1,7 @@
 #pragma once
 #include "real.h"
+#include "assert.h"
+#include "constants.h"
 
 struct normal
 {
@@ -20,11 +22,11 @@ inline void normal_init(normal_t *n, real nx, real ny, real nz)
 	n->z = nz;
 }
 
-inline void normal_copy(normal_t *a, normal_t *b)
+inline void normal_copy(normal_t *t, normal_t *s)
 {
-	a->x = b->x;
-	a->y = b->y;
-	a->z = b->z;
+	t->x = s->x;
+	t->y = s->y;
+	t->z = s->z;
 }
 
 inline void normal_from_vec(normal_t *n, normal_t *v)

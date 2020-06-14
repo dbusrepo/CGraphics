@@ -22,8 +22,8 @@ screen_info_t *init_screen_info(
 	screen_info->bytes_per_rgb = bytes_per_rgb;
 	screen_info->pbuffer = buffer;
 	
-	// initial reasonable default values for external max rgb values; these
-	// can be overridden just before actually reading rgb values from an
+	// initial reasonable default values for external max rgb_init values; these
+	// can be overridden just before actually reading rgb_init values from an
 	// external source
 	screen_info->ext_max_red = MAX_BYTE;
 	screen_info->ext_max_green = MAX_BYTE;

@@ -1,6 +1,7 @@
 #pragma once
 #include <math.h>
 #include "assert.h"
+#include "constants.h"
 #include "real.h"
 #include "vector3.r"
 #include "normal.h"
@@ -26,10 +27,10 @@ inline void vec2_init(vec2_t *v, real vx, real vy)
 	v->y = vy;
 }
 
-inline void vec2_copy(vec2_t *a, vec2_t *b)
+inline void vec2_copy(vec2_t *t, vec2_t *s)
 {
-	a->x = b->x;
-	a->y = b->y;
+	t->x = s->x;
+	t->y = s->y;
 }
 
 inline void vec2_negate(vec2_t *r, vec2_t *v)
@@ -108,11 +109,11 @@ inline void vec3_from_point3(vec3_t *v, point3_t *p)
 	vec3_init(v, p->x, p->y, p->z);
 }
 
-inline void vec3_copy(vec3_t *a, vec3_t *b)
+inline void vec3_copy(vec3_t *t, vec3_t *s)
 {
-	a->x = b->x;
-	a->y = b->y;
-	a->z = b->z;
+	t->x = s->x;
+	t->y = s->y;
+	t->z = s->z;
 }
 
 inline void vec3_sub(vec3_t *r, vec3_t *a, vec3_t *b)

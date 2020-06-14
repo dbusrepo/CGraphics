@@ -22,11 +22,11 @@ inline void point3_init(point3_t *p, real px, real py, real pz)
 	p->z = pz;
 }
 
-inline void point3_copy(point3_t *a, point3_t *b)
+inline void point3_copy(point3_t *t, point3_t *s)
 {
-	a->x = b->x;
-	a->y = b->y;
-	a->z = b->z;
+	t->x = s->x;
+	t->y = s->y;
+	t->z = s->z;
 }
 
 inline void point3_negate(point3_t *r, point3_t *p)
@@ -36,12 +36,12 @@ inline void point3_negate(point3_t *r, point3_t *p)
 	r->z = -p->z;
 }
 
-// the vector that joins point a to point b
-inline void point3_joining_vec(vec3_t *r, point3_t *a, point3_t *b)
+// the vector that joins point b to point a
+inline void point3_sub(vec3_t *r, point3_t *a, point3_t *b)
 {
-	r->x = b->x - a->x;
-	r->y = b->y - a->y;
-	r->z = b->z - a->z;
+	r->x = a->x - b->x;
+	r->y = a->y - b->y;
+	r->z = a->z - b->z;
 }
 
 // addition of a vector to a point that returns a new point
