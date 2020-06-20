@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(LinuxGraphics LANGUAGES C)
+project(CGraphics LANGUAGES C)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
