@@ -179,10 +179,15 @@ void app_show_fps(app_t *app, int x, int y)
 {
 	if (app->show_fps) {
 		static char buf[128];
-		snprintf(buf, 128, "FPS UPS %.0f %.0f",
+		static int c = 0;
+		snprintf(buf, 128, "%d FPS UPS %.0f %.0f",
+                 c++,
 		         app->stats.average_fps,
 		         app->stats.average_ups);
 		draw_text(app->screen_info_rgb, app->width, app->height, x, y, buf);
+		if (c > 1500) {
+            app->is_running = false;
+		}
 	}
 }
 

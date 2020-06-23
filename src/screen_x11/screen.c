@@ -641,6 +641,7 @@ void screen_terminate(screen_x11_t *screen)
 
 void screen_poll_events(screen_x11_t *screen)
 {
+//    flush_printf("polling...\n");
 
 //    uint64_t delta = nano_time() - screen_start_time;
 //    uint64_t limit = (NANO_IN_SEC * MAX_EXEC_SECONDS);
@@ -653,9 +654,10 @@ void screen_poll_events(screen_x11_t *screen)
 	
 	// Flag that the cursor has not moved
 	screen->input.MouseMoved = false;
-	
+
 	// Process all pending events
 	while (XPending(screen->display)) {
+//        flush_printf("polling...\n");
 		if (process_single_event(screen)) {
 			close_requested = true;
 		}
@@ -767,8 +769,6 @@ void screen_toggle_fullscreen(screen_t *screen)
 ////    XWarpPointer(screen->display, None, screen->window, 0,0,0,0, screen->width/2, screen->height/2);
 ////    XFlush(screen->display);
 //    center_mouse(screen);
-	flush_printf("toggling...\n");
-
 //    print_coord_root(screen);
 
 
@@ -781,6 +781,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 	screen->pointer_grabbed = false;
 	XSync(screen->display, False);
 	if (screen->fullscreen) {
+        flush_printf("going fullscreen...\n");
 //        XUnmapWindow(screen->display, screen->window);
 		update_window_size(screen);
 		set_override_redirect(screen);
@@ -793,7 +794,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 		center_mouse(screen);
 		// Retrieve and set initial cursor position
 		init_cursor_pos(screen);
-		
+        XSync(screen->display, False);
 		
 		
 		//        XUnmapWindow(screen->display, screen->window);
@@ -815,6 +816,8 @@ void screen_toggle_fullscreen(screen_t *screen)
 //        get_cursor_pos(screen, &windowX, &windowY);
 		//        center_mouse(screen);
 	} else {
+        flush_printf("going windowed...\n");
+
 //        flush_printf("going windowed...\n");
 		leave_fullscreen(screen);
 		set_override_redirect(screen);
@@ -934,10 +937,10 @@ static void enter_fullscreen(screen_x11_t *screen)
 {
 
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
-	
 	XRaiseWindow(screen->display, screen->window);
 //    XSetInputFocus(screen->display, screen->window,
 //                   RevertToParent, CurrentTime );
+    XSync(screen->display, False);
 	XSetInputFocus(screen->display, screen->window,
 	               RevertToNone, CurrentTime);
 	XMoveWindow(screen->display, screen->window, 0, 0);
@@ -1026,6 +1029,8 @@ static void enter_fullscreen(screen_x11_t *screen)
 		XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
 		XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
 	}
+    XSetInputFocus(screen->display, screen->window,
+                   RevertToNone, CurrentTime);
 	flush_printf("fullscreen: ");
 	print_window_attr(screen);
 }
@@ -1477,7 +1482,7 @@ static bool process_single_event(screen_x11_t *screen)
 	// if or while?
 	switch (event.type) {
 		case KeyPress: { // A keyboard key was pressed
-//            flush_printf("key pressed...\n");
+            flush_printf("key pressed...%d\n", event.xkey.keycode);
 			// Translate and report key press
 			input_key(screen, translate_key(screen, event.xkey.keycode), KEY_PRESS);
 			
@@ -1488,7 +1493,7 @@ static bool process_single_event(screen_x11_t *screen)
 			break;
 		}
 		case KeyRelease: { // A keyboard key was released
-			
+            flush_printf("key released...%d\n", event.xkey.keycode);
 			// Do not report key releases for key repeats. For key repeats we
 			// will get KeyRelease/KeyPress pairs with similar or identical
 			// time stamps. User selected key repeat filtering is handled in
