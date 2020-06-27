@@ -194,12 +194,11 @@ static void wait_ms(int ms);
 
 static void move_mouse_root_win(screen_x11_t *screen); // TODO use?
 
+static void print_coord_root(screen_t *screen);
 
-void print_coord_root(screen_t *screen);
+static void set_override_redirect(screen_x11_t *screen);
 
-void set_override_redirect(screen_x11_t *screen);
-
-void init_window(screen_x11_t *screen);
+static void init_window(screen_x11_t *screen);
 
 // ...
 // TODO see createWindow e _glfwPlatformOpenWindow in glfw/lib/x11/x11_window.c
@@ -401,7 +400,7 @@ screen_x11_t *screen_init(screen_settings_t *screen_settings)
 	return screen;
 }
 
-void init_window(screen_x11_t *screen)
+static void init_window(screen_x11_t *screen)
 {
 	screen->root = RootWindow(screen->display, screen->screen_idx); // DefaultRootWindow(screen->display);
 	screen->window = XCreateWindow(screen->display,                // display
@@ -426,7 +425,7 @@ void init_window(screen_x11_t *screen)
 	init_atoms(screen); // requires the root... // TODO
 }
 
-void set_override_redirect(screen_x11_t *screen)
+static void set_override_redirect(screen_x11_t *screen)
 {
 	screen->overrideRedirect = screen->fullscreen;
 	XSetWindowAttributes attributes;
@@ -682,9 +681,11 @@ void screen_poll_events(screen_x11_t *screen)
 		//       accumulated over the course of a frame, instead of performing
 //        XFlush(screen->display);
 	}
+
 	if (close_requested && screen->win_close_callback) {
 		close_requested = screen->win_close_callback();
 	}
+
 	if (close_requested) {
 		screen_terminate(screen);
 	}
@@ -780,6 +781,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 	screen->pointer_hidden = false;
 	screen->pointer_grabbed = false;
 	XSync(screen->display, False);
+
 	if (screen->fullscreen) {
         flush_printf("going fullscreen...\n");
 //        XUnmapWindow(screen->display, screen->window);
@@ -787,17 +789,14 @@ void screen_toggle_fullscreen(screen_t *screen)
 		set_override_redirect(screen);
 		XMapWindow(screen->display, screen->window);
 		enter_fullscreen(screen);
-		XSync(screen->display, False);
-//        XReparentWindow(screen->display, screen->window, DefaultRootWindow(screen->display), 0, 0);
 
-//        XSync(screen->display, False);
-		center_mouse(screen);
-		// Retrieve and set initial cursor position
+//		XSync(screen->display, False);
+//        XReparentWindow(screen->display, screen->window, DefaultRootWindow(screen->display), 0, 0);
+//		center_mouse(screen);
 		init_cursor_pos(screen);
         XSync(screen->display, False);
-		
-		
-		//        XUnmapWindow(screen->display, screen->window);
+
+//        XUnmapWindow(screen->display, screen->window);
 //        XMapWindow(screen->display, screen->window);
 
 //        set_override_redirect(screen);
@@ -826,6 +825,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 		center_window(screen);
 		center_mouse(screen);
 	}
+
 	XSync(screen->display, False);
 	screen_poll_events(screen);
 
@@ -833,7 +833,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 //    get_cursor_pos(screen, &windowX, &windowY);
 }
 
-void print_coord_root(screen_t *screen)
+static void print_coord_root(screen_t *screen)
 {
 	Window child;
 	int x, y;
@@ -935,17 +935,12 @@ static void init_atoms(screen_x11_t *screen_x11)
 
 static void enter_fullscreen(screen_x11_t *screen)
 {
-
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
 	XRaiseWindow(screen->display, screen->window);
-//    XSetInputFocus(screen->display, screen->window,
-//                   RevertToParent, CurrentTime );
-    XSync(screen->display, False);
-	XSetInputFocus(screen->display, screen->window,
-	               RevertToNone, CurrentTime);
+//    XSync(screen->display, False);
+//	XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime); // RevertToParent
 	XMoveWindow(screen->display, screen->window, 0, 0);
-	XResizeWindow(screen->display, screen->window,
-	              screen->width, screen->height);
+	XResizeWindow(screen->display, screen->window, screen->width, screen->height);
 	XSync(screen->display, False);
 	
 	//    /* no WM means no FocusIn event, which confuses us. Force it. */
@@ -1022,15 +1017,16 @@ static void enter_fullscreen(screen_x11_t *screen)
 	// This hack should be harmless on saner systems as well
 	set_mouse_cursor_pos(screen, 0, 0);
 	center_mouse(screen);
-	XSync(screen->display, False);
-	{
-		XEvent ev;
-		/* Wait to be mapped, filter Unmap event out if it arrives. */
-		XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
-		XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
-	}
-    XSetInputFocus(screen->display, screen->window,
-                   RevertToNone, CurrentTime);
+
+	//	XSync(screen->display, False);
+    XEvent ev;
+    /* Wait to be mapped, filter Unmap event out if it arrives. */
+    XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
+    XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
+
+    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
+    XSync(screen->display, False);
+//    XFlush(screen->display);
 	flush_printf("fullscreen: ");
 	print_window_attr(screen);
 }
@@ -1061,7 +1057,9 @@ static void leave_fullscreen(screen_x11_t *screen)
 	if (screen->mouseLock) {
 		show_mouse_cursor(screen);
 	}
-	XFlush(screen->display);
+
+//	XFlush(screen->display);
+    XSync(screen->display, False);
 }
 
 //========================================================================
@@ -1142,6 +1140,7 @@ static void update_window_size(screen_x11_t *screen)
 		size_changed = true; // TODO notify the app?
 		printf("win size changed\n");
 	}
+
 	if (screen->fullscreen) {
 		// Change video mode, keeping current refresh rate
 		change_video_mode(screen, mode); // TODO decomment
