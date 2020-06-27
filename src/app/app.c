@@ -185,10 +185,10 @@ void app_show_fps(app_t *app, int x, int y)
 		         app->stats.average_fps,
 		         app->stats.average_ups);
 		draw_text(app->screen_info_rgb, app->width, app->height, x, y, buf);
-		if (c > 1500) {
-            flush_printf("\nMax counter reached. Exiting...");
-            app->is_running = false;
-		}
+//		if (c > 2500) {
+//            flush_printf("\nMax counter reached. Exiting...");
+//            app->is_running = false;
+//		}
 	}
 }
 
