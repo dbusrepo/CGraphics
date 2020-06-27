@@ -2,8 +2,8 @@
 
 add_library(screen_x11 STATIC "")
 
-file(GLOB SOURCES "*.c")
-file(GLOB HEADERS "*.h")
+file(GLOB_RECURSE SOURCES "*.c")
+file(GLOB_RECURSE HEADERS "*.h")
 
 target_sources(screen_x11
         PRIVATE

@@ -1,7 +1,7 @@
 add_library(graphics_utils STATIC "" common.c)
 
-file(GLOB SOURCES "*.c")
-file(GLOB HEADERS "*.h")
+file(GLOB_RECURSE SOURCES "*.c")
+file(GLOB_RECURSE HEADERS "*.h")
 
 target_sources(graphics_utils
         PRIVATE

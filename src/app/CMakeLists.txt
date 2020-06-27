@@ -2,8 +2,8 @@
 
 add_library(app STATIC "") # object library, see $<TARGET_OBJECTS:objLib>
 
-file(GLOB SOURCES "*.c")
-file(GLOB HEADERS "*.h")
+file(GLOB_RECURSE SOURCES "*.c")
+file(GLOB_RECURSE HEADERS "*.h")
 
 target_sources(app
         PRIVATE
