@@ -7,3 +7,4 @@
 #define NANO_IN_MILLI 1000000l
 #define NANO_IN_SEC (1000l * NANO_IN_MILLI)
 
+void flush_printf(const char *format, ...);

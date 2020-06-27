@@ -1,4 +1,4 @@
-add_library(graphics_utils STATIC "")
+add_library(graphics_utils STATIC "" common.c)
 
 file(GLOB SOURCES "*.c")
 file(GLOB HEADERS "*.h")

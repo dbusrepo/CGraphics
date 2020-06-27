@@ -112,8 +112,6 @@ struct screen
 	} input;
 };
 
-static void flush_printf(const char *format, ...);
-
 // TODO fix names??
 static void init_cursor_pos(screen_x11_t *screen);
 
@@ -938,7 +936,7 @@ static void enter_fullscreen(screen_x11_t *screen)
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
 	XRaiseWindow(screen->display, screen->window);
 //    XSync(screen->display, False);
-//	XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime); // RevertToParent
+	XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime); // RevertToParent // RevertToNone
 	XMoveWindow(screen->display, screen->window, 0, 0);
 	XResizeWindow(screen->display, screen->window, screen->width, screen->height);
 	XSync(screen->display, False);
@@ -985,7 +983,7 @@ static void enter_fullscreen(screen_x11_t *screen)
 //        event.xclient.data.l[1] = screen->wmStateFullscreen;
 //        event.xclient.data.l[2] = 0; // No secondary property
 //        event.xclient.data.l[3] = 1; // Sender is a normal application // TODO try 0l as in sdl?
-//
+//azsdasd
 //        //    enterFullscreenMode
 //        XSendEvent(screen->display,
 //                   screen->root,
@@ -1019,16 +1017,20 @@ static void enter_fullscreen(screen_x11_t *screen)
 	center_mouse(screen);
 
 	//	XSync(screen->display, False);
-    XEvent ev;
     /* Wait to be mapped, filter Unmap event out if it arrives. */
-    XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
-    XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
+//    XEvent ev;
+//    XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
+//    XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
 
-    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
-    XSync(screen->display, False);
+//    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
 //    XFlush(screen->display);
-	flush_printf("fullscreen: ");
-	print_window_attr(screen);
+
+    XGrabKeyboard(screen->display, screen->window, True, GrabModeAsync,
+                  GrabModeAsync, CurrentTime);
+    XSync(screen->display, False);
+
+    flush_printf("fullscreen: ");
+    print_window_attr(screen);
 }
 
 static void leave_fullscreen(screen_x11_t *screen)
@@ -2049,16 +2051,6 @@ static int translate_key(screen_x11_t *screen, int keycode)
 			return KEY_UNKNOWN;
 	}
 }
-
-static void flush_printf(const char *format, ...)
-{
-	va_list arg;
-	va_start (arg, format);
-	vprintf(format, arg);
-	va_end (arg);
-	fflush(stdout);
-}
-
 
 //========================================================================
 // Show mouse cursor (unlock it)
