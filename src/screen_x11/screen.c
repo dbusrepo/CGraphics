@@ -651,7 +651,7 @@ void screen_poll_events(screen_x11_t *screen)
 	
 	// Flag that the cursor has not moved
 	screen->input.MouseMoved = false;
-
+	
 	// Process all pending events
 	while (XPending(screen->display)) {
 //        flush_printf("polling...\n");
@@ -679,11 +679,11 @@ void screen_poll_events(screen_x11_t *screen)
 		//       accumulated over the course of a frame, instead of performing
 //        XFlush(screen->display);
 	}
-
+	
 	if (close_requested && screen->win_close_callback) {
 		close_requested = screen->win_close_callback();
 	}
-
+	
 	if (close_requested) {
 		screen_terminate(screen);
 	}
@@ -761,61 +761,26 @@ static Bool isUnmapNotify(Display *dpy, XEvent *ev, XPointer win)
 
 void screen_toggle_fullscreen(screen_t *screen)
 {
-	screen->fullscreen = !screen->fullscreen;
-//    int windowX, windowY;
-//    get_cursor_pos(screen, &windowX, &windowY);
-
-////    XWarpPointer(screen->display, None, screen->window, 0,0,0,0, screen->width/2, screen->height/2);
-////    XFlush(screen->display);
-//    center_mouse(screen);
-//    print_coord_root(screen);
-
-
-//    XWithdrawWindow(screen->display, screen->window, screen->screen_idx);
 	XUnmapWindow(screen->display, screen->window);
 	XDestroyWindow(screen->display, screen->window);
+	screen->fullscreen = !screen->fullscreen;
 	init_window(screen);
 	clear_input(screen);
 	screen->pointer_hidden = false;
 	screen->pointer_grabbed = false;
 	XSync(screen->display, False);
-
+	
 	if (screen->fullscreen) {
-        flush_printf("going fullscreen...\n");
+//		flush_printf("going fullscreen...\n");
 //        XUnmapWindow(screen->display, screen->window);
 		update_window_size(screen);
 		set_override_redirect(screen);
 		XMapWindow(screen->display, screen->window);
 		enter_fullscreen(screen);
-
-//		XSync(screen->display, False);
-//        XReparentWindow(screen->display, screen->window, DefaultRootWindow(screen->display), 0, 0);
-//		center_mouse(screen);
 		init_cursor_pos(screen);
-        XSync(screen->display, False);
-
-//        XUnmapWindow(screen->display, screen->window);
-//        XMapWindow(screen->display, screen->window);
-
-//        set_override_redirect(screen);
-
-//        set_window_pos(screen, 0, 0);
-		
-		//        set_window_pos(screen, 0, 0);
-//        XWithdrawWindow(screen->display, screen->window, screen->screen_idx);
-//        XUnmapWindow(screen->display, screen->window);
-//        XMapWindow(screen->display, screen->window);
-		//        flush_printf("going fullscreen...\n");
-
-//        print_coord_root(screen);
-////        set_mouse_cursor_pos()
-//        int windowX, windowY;
-//        get_cursor_pos(screen, &windowX, &windowY);
-		//        center_mouse(screen);
+		XSync(screen->display, False);
 	} else {
-        flush_printf("going windowed...\n");
-
-//        flush_printf("going windowed...\n");
+//		flush_printf("going windowed...\n");
 		leave_fullscreen(screen);
 		set_override_redirect(screen);
 		XMapWindow(screen->display, screen->window);
@@ -823,7 +788,7 @@ void screen_toggle_fullscreen(screen_t *screen)
 		center_window(screen);
 		center_mouse(screen);
 	}
-
+	
 	XSync(screen->display, False);
 	screen_poll_events(screen);
 
@@ -935,76 +900,10 @@ static void enter_fullscreen(screen_x11_t *screen)
 {
 //    set_video_mode(screen, screen->width, screen->height); // already done in set win size?
 	XRaiseWindow(screen->display, screen->window);
-//    XSync(screen->display, False);
 	XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime); // RevertToParent // RevertToNone
 	XMoveWindow(screen->display, screen->window, 0, 0);
 	XResizeWindow(screen->display, screen->window, screen->width, screen->height);
 	XSync(screen->display, False);
-	
-	//    /* no WM means no FocusIn event, which confuses us. Force it. */
-//    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
-//    XFlush(screen->display);
-	
-	//    if(screen->hasEWMH &&
-//       screen->wmState != None &&
-//       screen->wmStateFullscreen != None ) {
-//
-////        if (screen->wmActiveWindow != None) {
-////            // Ask the window manager to raise and focus the GLFW window
-////            // Only focused windows with the _NET_WM_STATE_FULLSCREEN state end
-////            // up on top of all other windows ("Stacking order" in EWMH spec)
-////
-////            XEvent event = {0};
-////
-////            event.type = ClientMessage;
-////            event.xclient.window = screen->window;
-////            event.xclient.format = 32; // Data is 32-bit longs
-////            event.xclient.message_type = screen->wmActiveWindow;
-////            event.xclient.data.l[0] = 1; // Sender is a normal application
-////            event.xclient.data.l[1] = 0; // We don't really know the timestamp
-////
-////            flush_printf("active win\n");
-////
-////            XSendEvent(screen->display,
-////                       screen->root,
-//////                       DefaultRootWindow(screen->display),
-////                       False,
-////                       SubstructureNotifyMask | SubstructureRedirectMask,
-////                       &event);
-////        }
-//
-//        XEvent event = {0};
-//
-//        event.type = ClientMessage;
-//        event.xclient.window = screen->window;
-//        event.xclient.format = 32; // Data is 32-bit longs
-//        event.xclient.message_type = screen->wmState;
-//        event.xclient.data.l[0] = _NET_WM_STATE_ADD;
-//        event.xclient.data.l[1] = screen->wmStateFullscreen;
-//        event.xclient.data.l[2] = 0; // No secondary property
-//        event.xclient.data.l[3] = 1; // Sender is a normal application // TODO try 0l as in sdl?
-//azsdasd
-//        //    enterFullscreenMode
-//        XSendEvent(screen->display,
-//                   screen->root,
-////                   DefaultRootWindow(screen->display),
-//                   False,
-//                   SubstructureNotifyMask | SubstructureRedirectMask,
-//                   &event);
-//
-//    } else if(screen->overrideRedirect )
-//    {
-//        // In override-redirect mode, we have divorced ourselves from the
-//        // window manager, so we need to do everything manually
-//        XRaiseWindow(screen->display, screen->window );
-//        XSetInputFocus(screen->display, screen->window,
-//                       RevertToParent, CurrentTime );
-//        XMoveWindow(screen->display, screen->window, 0, 0 );
-//        XResizeWindow(screen->display, screen->window,
-//                      screen->width, screen->height );
-//    }
-
-//    XMoveWindow(screen->display, screen->window, 0, 0);
 	
 	if (screen->mouseLock) {
 		hide_mouse_cursor(screen);
@@ -1015,22 +914,12 @@ static void enter_fullscreen(screen_x11_t *screen)
 	// This hack should be harmless on saner systems as well
 	set_mouse_cursor_pos(screen, 0, 0);
 	center_mouse(screen);
+	
+	XGrabKeyboard(screen->display, screen->window, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+	XSync(screen->display, False);
 
-	//	XSync(screen->display, False);
-    /* Wait to be mapped, filter Unmap event out if it arrives. */
-//    XEvent ev;
-//    XIfEvent(screen->display, &ev, &isMapNotify, (XPointer) &screen->window);
-//    XCheckIfEvent(screen->display, &ev, &isUnmapNotify, (XPointer) &screen->window);
-
-//    XSetInputFocus(screen->display, screen->window, RevertToNone, CurrentTime);
-//    XFlush(screen->display);
-
-    XGrabKeyboard(screen->display, screen->window, True, GrabModeAsync,
-                  GrabModeAsync, CurrentTime);
-    XSync(screen->display, False);
-
-    flush_printf("fullscreen: ");
-    print_window_attr(screen);
+//	flush_printf("fullscreen: ");
+//	print_window_attr(screen);
 }
 
 static void leave_fullscreen(screen_x11_t *screen)
@@ -1061,7 +950,7 @@ static void leave_fullscreen(screen_x11_t *screen)
 	}
 
 //	XFlush(screen->display);
-    XSync(screen->display, False);
+	XSync(screen->display, False);
 }
 
 //========================================================================
@@ -1142,7 +1031,7 @@ static void update_window_size(screen_x11_t *screen)
 		size_changed = true; // TODO notify the app?
 		printf("win size changed\n");
 	}
-
+	
 	if (screen->fullscreen) {
 		// Change video mode, keeping current refresh rate
 		change_video_mode(screen, mode); // TODO decomment
@@ -1331,7 +1220,7 @@ static void hide_mouse_cursor(screen_x11_t *screen)
 		// comment these 2 lines to not hide the cursor
 		XDefineCursor(screen->display, screen->window, screen->cursor); // TODO prova a commentare questo?
 		screen->pointer_hidden = true;
-		flush_printf("pointer hidden\n");
+//		flush_printf("pointer hidden\n");
 	}
 	grab_mouse(screen);
 	center_mouse(screen); // Move cursor to the middle of the window
@@ -1346,7 +1235,7 @@ static void grab_mouse(screen_x11_t *screen)
 		                            screen->window, None, CurrentTime);
 		if (grab_res == GrabSuccess) {
 			screen->pointer_grabbed = True;
-			flush_printf("pointer grabbed\n");
+//			flush_printf("pointer grabbed\n");
 		} else {
 			flush_printf("X server refused mouse capture\n");
 		}
@@ -1483,7 +1372,7 @@ static bool process_single_event(screen_x11_t *screen)
 	// if or while?
 	switch (event.type) {
 		case KeyPress: { // A keyboard key was pressed
-            flush_printf("key pressed...%d\n", event.xkey.keycode);
+//			flush_printf("key pressed...%d\n", event.xkey.keycode);
 			// Translate and report key press
 			input_key(screen, translate_key(screen, event.xkey.keycode), KEY_PRESS);
 			
@@ -1494,7 +1383,8 @@ static bool process_single_event(screen_x11_t *screen)
 			break;
 		}
 		case KeyRelease: { // A keyboard key was released
-            flush_printf("key released...%d\n", event.xkey.keycode);
+//			flush_printf("key released...%d\n", event.xkey.keycode);
+			
 			// Do not report key releases for key repeats. For key repeats we
 			// will get KeyRelease/KeyPress pairs with similar or identical
 			// time stamps. User selected key repeat filtering is handled in

@@ -10,7 +10,7 @@ static void update(int64_t elapsed_time)
 static void draw(void)
 {
 	app_clear_screen(app);
-	app_show_fps(app, 0, 0);
+	app_show_fps(app, 1, 1);
 }
 
 static void key_event(int key, int action)
