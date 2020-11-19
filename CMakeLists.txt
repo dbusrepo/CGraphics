@@ -32,7 +32,7 @@ set(MY_ICC_OPTIONS -w3 -diag-disable:remark -Wall -Warray-bounds -Wchar-subscrip
 #https://stackoverflow.com/questions/10046114/in-cmake-how-can-i-test-if-the-compiler-is-clang
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
     # using GCC
-    message("using gcc " ${CMAKE_C_COMPILER_VERSION})
+    message("Hi have fun ! I'm using gcc " ${CMAKE_C_COMPILER_VERSION})
     list(APPEND MY_OPTIONS ${MY_GCC_OPTIONS}) #${gcc_options}
     list(APPEND MY_DEBUG_OPTIONS "-Og")
     list(APPEND MY_RELEASE_OPTIONS "-O3" "-Wno-unused" "-fno-tree-vectorize") # -Wno-unused") #note: "-fno-tree-vectorize" disable vectorization
@@ -41,7 +41,7 @@ endif ()
 
 if (CMAKE_C_COMPILER_ID MATCHES Intel)
     # using GCC
-    message("using icc " ${CMAKE_C_COMPILER_VERSION})
+    message("Using icc " ${CMAKE_C_COMPILER_VERSION})
     list(APPEND MY_OPTIONS ${MY_ICC_OPTIONS}) #${gcc_options}
     list(APPEND MY_DEBUG_OPTIONS "-Og") # "-Og"
     list(APPEND MY_RELEASE_OPTIONS "-O3" "-Wno-unused")
@@ -75,7 +75,7 @@ if (${PROJECT_SOURCE_DIR} STREQUAL ${PROJECT_BINARY_DIR})
     message(FATAL_ERROR "In-source builds not allowed. Please make a new directory")
 endif ()
 
-message("build type: " ${CMAKE_BUILD_TYPE})
+message("Build type: " ${CMAKE_BUILD_TYPE})
 
 #https://stackoverflow.com/questions/25193239/cmake-directory-hierarchy-building-a-sub-directory-independently
 # -Dproject1=1 or the whole project with -DALL=1.
