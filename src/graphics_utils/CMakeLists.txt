@@ -21,6 +21,12 @@ target_include_directories(graphics_utils
         PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}
         )
+        
+target_link_libraries(graphics_utils
+        PRIVATE
+        "$<$<CONFIG:Debug>:asan>"
+        "$<$<CONFIG:Debug>:ubsan>"
+        )
 
 foreach (SOURCE ${SOURCES})
     get_filename_component(SOURCE_NAME "${SOURCE}" NAME)

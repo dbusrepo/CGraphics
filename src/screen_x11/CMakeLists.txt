@@ -26,6 +26,8 @@ target_include_directories(screen_x11
 
 target_link_libraries(screen_x11
         PRIVATE
+        "$<$<CONFIG:Debug>:asan>"
+        "$<$<CONFIG:Debug>:ubsan>"
         X11
         Xext
         Xt
