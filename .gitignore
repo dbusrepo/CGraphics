@@ -84,5 +84,6 @@ out/
 
 #eclipse
 .settings/
+.csettings/
 .cproject
 .project
