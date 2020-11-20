@@ -42,3 +42,4 @@ foreach (SOURCE ${SOURCES})
             COMMAND make ARGS ${SOURCE_NAME}.s
             )
 endforeach (SOURCE)
+
