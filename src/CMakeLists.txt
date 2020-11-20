@@ -5,10 +5,19 @@ add_subdirectory(screen_x11)
 add_subdirectory(app)
 
 #add_subdirectory(_apps)
-add_executable(GraphicsApp test_graphics_app.c)
+add_executable(x11BaseApp x11BaseApp.c)
 
-target_link_libraries(GraphicsApp
+target_compile_options(x11BaseApp
         PRIVATE
+        "${MY_OPTIONS}"
+        "$<$<CONFIG:Debug>:${MY_DEBUG_OPTIONS}>"
+        "$<$<CONFIG:Release>:${MY_RELEASE_OPTIONS}>"
+        )
+        
+target_link_libraries(x11BaseApp
+        PRIVATE
+		"$<$<CONFIG:Debug>:asan>"
+        "$<$<CONFIG:Debug>:ubsan>"
         app
         )
 

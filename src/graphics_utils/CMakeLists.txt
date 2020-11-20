@@ -24,8 +24,6 @@ target_include_directories(graphics_utils
         
 target_link_libraries(graphics_utils
         PRIVATE
-        "$<$<CONFIG:Debug>:asan>"
-        "$<$<CONFIG:Debug>:ubsan>"
         )
 
 foreach (SOURCE ${SOURCES})

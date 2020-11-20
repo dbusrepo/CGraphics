@@ -7,9 +7,11 @@
 
 typedef struct screen screen_t;
 
-screen_t *screen_init(screen_settings_t *screen_settings);
+screen_t* screen_init(screen_settings_t *screen_settings);
 
-screen_info_t *screen_get_info(screen_t *screen);
+screen_t* screen_finish(screen_t **screen);
+
+screen_info_t* screen_get_info(screen_t *screen);
 
 void screen_poll_events(screen_t *screen);
 
@@ -23,17 +25,23 @@ void screen_set_key_callback(screen_t *screen, fun_key_t key_callback);
 
 void screen_set_char_callback(screen_t *screen, fun_char_t char_callback);
 
-void screen_set_mouse_pos_callback(screen_t *screen, fun_mouse_pos_t mouse_pos_callback);
+void screen_set_mouse_pos_callback(screen_t *screen,
+		fun_mouse_pos_t mouse_pos_callback);
 
-void screen_set_mouse_button_callback(screen_t *screen, fun_mouse_button_t mouse_button_callback);
+void screen_set_mouse_button_callback(screen_t *screen,
+		fun_mouse_button_t mouse_button_callback);
 
-void screen_set_mouse_wheel_callback(screen_t *screen, fun_mouse_wheel_t mouse_wheel_callback);
+void screen_set_mouse_wheel_callback(screen_t *screen,
+		fun_mouse_wheel_t mouse_wheel_callback);
 
-void screen_win_size_callback(screen_t *screen, fun_win_size_t win_size_callback);
+void screen_win_size_callback(screen_t *screen,
+		fun_win_size_t win_size_callback);
 
-void screen_set_win_close_callback(screen_t *screen, fun_win_close_t win_close_callback);
+void screen_set_win_close_callback(screen_t *screen,
+		fun_win_close_t win_close_callback);
 
-void screen_set_win_refresh_callback(screen_t *screen, fun_win_refresh_t win_refresh_callback);
+void screen_set_win_refresh_callback(screen_t *screen,
+		fun_win_refresh_t win_refresh_callback);
 
 int screen_get_key(screen_t *screen, int key);
 

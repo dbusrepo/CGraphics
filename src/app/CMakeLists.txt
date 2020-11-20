@@ -27,8 +27,6 @@ target_include_directories(app
 # TODO
 target_link_libraries(app
         PRIVATE
-        "$<$<CONFIG:Debug>:asan>"
-        "$<$<CONFIG:Debug>:ubsan>"
         screen_x11
         graphics_utils
         )
