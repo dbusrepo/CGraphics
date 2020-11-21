@@ -94,10 +94,10 @@ PRINT_CUR_BINARY_DIR()
 add_subdirectory(src)
 #include ext_libs
 
-# eclipse ? to configure see the answer by Martin Gerhardy
-# see https://stackoverflow.com/questions/9453851/how-to-configure-eclipse-cdt-for-cmake
-
 #https://stackoverflow.com/questions/24460486/cmake-build-type-is-not-being-used-in-cmakelists-txt
 #-DCMAKE_BUILD_TYPE=Debug
 
-#https://stackoverflow.com/questions/55290446/how-do-you-change-the-cmake-generator-in-eclipse
+# config in eclipse ? Probably there are multiple ways to do that, but when I did it, I installed the cmake plugin, imported the project as "Projects from folder" and then "right click on the project->cmake setup"
+# see also https://stackoverflow.com/questions/9453851/how-to-configure-eclipse-cdt-for-cmake
+# https://stackoverflow.com/questions/55290446/how-do-you-change-the-cmake-generator-in-eclipse
+
